@@ -1,0 +1,77 @@
+import discord
+from discord.ext import commands
+import pyodbc
+
+# Prefix ---------------------------------------------------------------------------------------------------------------
+def get_prefix(client, message):
+    cnxn = pyodbc.connect(sql_connection)
+    cursor = cnxn.cursor()
+    cursor.execute("select prefix from Prefixes where ServerId = ?", message.guild.id)
+    row = cursor.fetchone()
+    if not row:
+        return "t!"
+    else:
+        return row.prefix
+
+
+
+client = commands.Bot(command_prefix = get_prefix)
+
+# Only Allow Admins To Change Prefix -----------------------------------------------------------------------------------
+@client.command()
+@commands.has_permissions(administrator = True)
+async def setprefix(ctx, prefix):
+
+    await update_prefix(ctx.guild.id, prefix)
+
+    em = discord.Embed(title=f"My server prefix was changed to `{prefix}`", color=discord.Color.red())
+    await ctx.send(embed=em)
+
+
+sql_connection = 'DRIVER={SQL Server Native Client 11.0};SERVER=localhost;DATABASE=BotTester;UID=sa;PWD=wa11paper'
+async def update_prefix(serverid, prefix):
+
+    cnxn = pyodbc.connect(sql_connection)
+    cursor = cnxn.cursor()
+    cursor.execute("select prefix from Prefixes where ServerId = ?", serverid)
+    row = cursor.fetchone()
+    if not row:
+        cursor.execute("insert into Prefixes (ServerId, Prefix) values (?, ?)", serverid, prefix)
+    else:
+        cursor.execute("Update Prefixes set prefix = ? where serverid = ?", prefix, serverid)
+
+    cnxn.commit()
+    return
+
+# Reveals Prefix On Ping -----------------------------------------------------------------------------------------------
+@client.event
+async def on_message(message):
+    if client.user.mentioned_in(message):
+
+        pre = get_prefix(client, message)
+
+        em = discord.Embed(title=f"My current server prefix is `{pre}`", color=discord.Color.red())
+        await message.channel.send(embed = em)
+    else:
+        pass
+    await client.process_commands(message)
+
+
+# Bot Setup ------------------------------------------------------------------------------------------------------------
+@client.event
+async def on_ready():
+    await client.change_presence(activity=discord.Game('.help'))
+    print("We have logged in as {0.user}".format(client))
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+# .ping to get bot ping ------------------------------------------------------------------------------------------------
+@client.command()
+async def ping(ctx):
+    await ctx.send(f"**Swish!**" + '\n'
+        + f"You got the shot off with just **{round(client.latency * 1000)}ms** left on the clock!")
+
+# ---------------------------------------------------------------------------------------------------------------------
+
+# Super Secret Token -----------------------------------------------------------------------------------------------
+client.run('ODU5MTc4MTkwMjY1OTA5MjU5.YNo6Cw.mBy0i5d5itz8JQTtKDPMLI857LM')

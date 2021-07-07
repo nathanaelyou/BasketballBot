@@ -1,0 +1,200 @@
+import discord
+from discord.ext import commands
+import json
+import random
+import os
+import pyodbc
+
+# To Access Beta Files -------------------------------------------------------------------------------------------------
+os.chdir("C:\\Users\\natha.SURFACE\\PycharmProjects\\BasketballBot\\Tester")
+
+client = commands.Bot(command_prefix = "t!")
+
+# Bot Setup ------------------------------------------------------------------------------------------------------------
+@client.event
+async def on_ready():
+    await client.change_presence(activity=discord.Game('.help'))
+    print("We have logged in as {0.user}".format(client))
+
+
+# .ping to get bot ping ------------------------------------------------------------------------------------------------
+@client.command()
+async def ping(ctx):
+    await ctx.send(f"**Swish!**" + '\n'
+        + f"You got the shot off with just **{round(client.latency * 1000)}ms** left on the clock!")
+
+# .balance To Get Balance ----------------------------------------------------------------------------------------------
+@client.command(aliases = ['bal', 'wallet'])
+@commands.cooldown(1,3,commands.BucketType.user)
+async def balance(ctx):
+    wallet_amt = await get_balance(ctx.author)
+
+    # Balance Embed
+    em = discord.Embed(title = f"{ctx.author.name}'s Net Worth", color = discord.Color.red())
+    em.add_field(name = "Bank balance", value = wallet_amt)
+    em.add_field(name="Player Values", value=0)
+    await ctx.send(embed = em)
+
+# .payday To Receive Money ---------------------------------------------------------------------------------------------
+@client.command(aliases = ['pd'])
+@commands.cooldown(1,2,commands.BucketType.user)
+async def payday(ctx):
+
+    earnings = random.randrange(251)
+
+    em = discord.Embed(title=f"You received ${earnings} as a payday!", color=discord.Color.red())
+    em.set_footer(text = f"Paid to {ctx.author.name}")
+    await ctx.send(embed =em)
+
+    await update_bank(ctx.author, earnings)
+
+@client.command()
+@commands.cooldown(1,86400,commands.BucketType.user)
+async def daily(ctx):
+
+    em = discord.Embed(title=f"You received $3030 as your daily reward!", color=discord.Color.red())
+    em.set_footer(text = f"Paid to {ctx.author.name}")
+    await ctx.send(embed =em)
+
+    await update_bank(ctx.author, 3030)
+
+# .donate To Give User Money -------------------------------------------------------------------------------------------
+# The Command
+@client.command(aliases = ['share', 'send', 'give', 'gift'])
+@commands.cooldown(1,15,commands.BucketType.user)
+async def donate(ctx, member:discord.Member, amount = None):
+
+    if amount == None:
+        em = discord.Embed(title=f"Please put in a real number next time", color=discord.Color.red())
+        em.set_footer(text=f"Basketball Beta")
+        await ctx.send(embed=em)
+        return
+
+    bal = await get_balance(ctx.author)
+
+    amount = int(amount)
+    if amount > bal:
+        em = discord.Embed(title="You don't even have that much money", color=discord.Color.red())
+        em.set_footer(text=f"Basketball Beta")
+        await ctx.send(embed=em)
+        return
+    if amount < 0:
+        em = discord.Embed(title="Don't try to break me, Put in a positive number", color=discord.Color.red())
+        em.set_footer(text=f"Basketball Beta")
+        await ctx.send(embed=em)
+        return
+
+    await update_bank(ctx.author, -1*amount)
+    await update_bank(member, amount)
+
+    em = discord.Embed(title=f"From: {ctx.author.name}", color=discord.Color.red())
+    em.add_field(name= f"To the {member.name} foundation", value=f"They have been given ${amount}!", inline=False)
+    em.set_footer(text="Basketball Beta")
+    await ctx.send(embed=em)
+
+# .invest To invest Your Money -----------------------------------------------------------------------------------------
+@client.command(aliases = ['slots', 'gamble'])
+async def invest(ctx, amount = None):
+
+    if amount == None:
+        em = discord.Embed(title=f"Please put in a real number next time", color=discord.Color.red())
+        em.set_footer(text=f"Basketball Beta")
+        await ctx.send(embed=em)
+        return
+
+    bal = await get_balance(ctx.author)
+
+    amount = int(amount)
+    if amount > bal:
+        em = discord.Embed(title="You don't even have that much money", color=discord.Color.red())
+        em.set_footer(text=f"Basketball Beta")
+        await ctx.send(embed=em)
+        return
+    if amount < 0:
+        em = discord.Embed(title="Don't try to break me, Put in a positive number", color=discord.Color.red())
+        em.set_footer(text=f"Basketball Beta")
+        await ctx.send(embed=em)
+        return
+
+    final = []
+    for i in range (3):
+        a = random.choice([":basketball:",
+                           ":chart_with_upwards_trend:",
+                           ":chart_with_downwards_trend:",
+                           ":dollar:",
+                           ":medal:"])
+
+        final.append(a)
+
+    # List to String
+    def listToString(a):
+
+        str1 = ""
+
+        for ele in a:
+            str1 += ele + " "
+
+        return str1
+
+    if final[0] == final[1] == final [2]:
+        await update_bank(ctx.author, 3*amount)
+        message = "Super Stonks!" + '\n' + "You won `x4` your investment"
+    elif final[0] == final[1] or final[0] == final[2] or final[1] == final[2]:
+        await update_bank(ctx.author, amount)
+        message = "Nice investment!" + '\n' + "You won `x2` your investment"
+    else:
+        await update_bank(ctx.author, -1*amount)
+        message = "Maybe don't invest next time" + '\n' + "You lost `all` your investment"
+
+
+    em = discord.Embed(title=f"{ctx.author.name}'s Stocks", color=discord.Color.red())
+    em.add_field(name=f"**------------------**" + '\n'
+                      + f"**>** {listToString(final)} **<**"+ '\n'
+                      + f"**------------------**", value = message, inline=False)
+    em.set_footer(text="Basketball Beta")
+    await ctx.send(embed=em)
+
+
+# Updates Money In Json File -------------------------------------------------------------------------------------------
+async def open_account(user):
+    cnxn = pyodbc.connect('DRIVER={SQL Server Native Client 11.0};SERVER=localhost;DATABASE=BotTester;UID=sa;PWD=wa11paper')
+    cursor = cnxn.cursor()
+    cursor.execute("select balance from Balance where UserId = ?", user.id)
+    row = cursor.fetchone()
+    if not row:
+        cursor.execute("insert into balance(UserId, Balance) values (?, ?)", user.id, 0)
+        cnxn.commit()
+
+    return True
+
+async def get_balance(user):
+    await open_account(user);
+
+    cnxn = pyodbc.connect(
+        'DRIVER={SQL Server Native Client 11.0};SERVER=localhost;DATABASE=BotTester;UID=sa;PWD=wa11paper')
+
+    cursor = cnxn.cursor()
+    cursor.execute("select balance from Balance where UserId = ?", user.id)
+    row = cursor.fetchone()
+    if row:
+        return int(row.balance)
+    else:
+        return 0
+
+async def update_bank(user, change=0):
+    await open_account(user)
+
+    cnxn = pyodbc.connect(
+        'DRIVER={SQL Server Native Client 11.0};SERVER=localhost;DATABASE=BotTester;UID=sa;PWD=wa11paper')
+
+    cursor = cnxn.cursor()
+    cursor.execute("select balance from Balance where UserId = ?", user.id)
+    row = cursor.fetchone()
+    row.balance = row.balance + change;
+    cursor.execute("Update Balance set balance = ? where UserId = ?", row.balance, user.id)
+
+    cnxn.commit()
+    return
+
+    # Super Secret Token -----------------------------------------------------------------------------------------------
+client.run('ODU5MTc4MTkwMjY1OTA5MjU5.YNo6Cw.mBy0i5d5itz8JQTtKDPMLI857LM')

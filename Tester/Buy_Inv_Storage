@@ -1,0 +1,168 @@
+import discord
+from discord.ext import commands
+import pyodbc
+
+sql_connection = 'DRIVER={SQL Server Native Client 11.0};SERVER=localhost;DATABASE=BotTester;UID=sa;PWD=wa11paper'
+
+client = commands.Bot(command_prefix = "t!")
+
+# ----------------------------------------------------------------------------------------------------------------------
+@client.event
+async def on_ready():
+    await client.change_presence(activity=discord.Game('.help'))
+    print("We have logged in as {0.user}".format(client))
+
+# ----------------------------------------------------------------------------------------------------------------------
+@client.command(aliases = ['shop'])
+async def market(ctx, page = 1):
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    cursor.execute("select ItemName, Description, Price, Icon from ShopItems order by Price, ItemName "
+                   "offset ? rows fetch next 6 rows only", (page - 1) * 6)
+    rows = cursor.fetchall()
+    if cursor.rowcount == 0:
+        em = discord.Embed(title="There aren't even that many shop pages", color = discord.Color.red())
+        await ctx.send(embed=em)
+    else:
+        em = discord.Embed(title="Basketball Beta Shop", color = discord.Color.red())
+        for row in rows:
+            em.add_field(name=row.Icon + " " + row.ItemName,
+                         value = "**$" + "{:,}".format(int(row.Price)) + "**" + '\n' + row.Description, inline = False)
+        em.set_footer(text=f"Page {page} of 5")
+        await ctx.send(embed=em)
+
+@client.command(aliases = ['purchase'])
+async def buy(ctx,item,amount = 1):
+    await open_account(ctx.author)
+
+    res = await buy_this(ctx.author,item,amount)
+
+    if not res[0]:
+        if res[1]==1:
+            em = discord.Embed(title="That isn't even a real item!", color=discord.Color.red())
+            await ctx.send(embed=em)
+            return
+        if res[1]==2:
+            em = discord.Embed(title=f"You don't have enough money in your wallet to buy {amount} {item}'s",
+                               color=discord.Color.red())
+            await ctx.send(embed=em)
+            return
+
+    em = discord.Embed(title=f"You just bought {amount} {item}'s!", color=discord.Color.red())
+    await ctx.send(embed=em)
+
+
+@client.command(aliases = ['inventory', 'inv', 'bag'])
+async def locker(ctx, page = 1):
+    await open_account(ctx.author)
+    user = ctx.author
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+
+    cursor.execute("select ItemCount = Count(*) from Inventory where UserId = ?", user.id)
+    row = cursor.fetchone()
+    itemCount = row.ItemCount
+    totalPages = (itemCount + 5) // 6
+
+    cursor.execute("select i.ItemName, i.ItemAmount, si.Icon from Inventory i, ShopItems si "
+                   "where i.ItemName = si.ItemName and i.UserId = ? order by i.ItemName "
+                   "offset ? rows fetch next 6 rows only", user.id, (page - 1) * 6)
+    rows = cursor.fetchall()
+    if cursor.rowcount == 0:
+        em = discord.Embed(title=f"You don't even have enough items to have `{page}` pages", color=discord.Color.red())
+        await ctx.send(embed=em)
+    else:
+        em = discord.Embed(title=f"{user.name}'s Locker Room", color=discord.Color.red())
+        for row in rows:
+            em.add_field(name=row.Icon + " " + row.ItemName.capitalize() + "'s",
+                         value="**" + "{:,}".format(int(row.ItemAmount)) + "**" , inline=False)
+        em.set_footer(text=f"Page {page} of {totalPages}")
+        await ctx.send(embed=em)
+
+# ----------------------------------------------------------------------------------------------------------------------
+async def buy_this(user,item_name,amount):
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    cursor.execute("select Price from ShopItems where ItemName = ?", item_name)
+    row = cursor.fetchone()
+
+    if not row:
+        return [False,1]
+    price = row.Price
+
+    cost = price*amount
+
+    cursor.execute("select Balance from Balance where UserId = ?", user.id)
+    row = cursor.fetchone()
+
+    bal = row.Balance
+
+    if bal < cost:
+        return [False,2]
+
+    cursor = cnxn.cursor()
+    cursor.execute("select * from Inventory where UserId = ? and ItemName = ?", user.id, item_name)
+    row = cursor.fetchone()
+
+    if not row:
+        cursor.execute("Insert into Inventory(UserId, ItemName, ItemAmount) values(?, ?, ?)",
+                       user.id, item_name, amount)
+    else:
+        cursor.execute("Update Inventory set ItemAmount = ItemAmount + ? where UserId = ? and ItemName = ?",
+                       amount, user.id, item_name)
+    cursor.commit()
+
+    await update_bank(user, cost*-1)
+
+    return [True,"Worked"]
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+async def open_account(user):
+    cnxn = pyodbc.connect(sql_connection)
+    cursor = cnxn.cursor()
+    cursor.execute("select balance from Balance where UserId = ?", user.id)
+    row = cursor.fetchone()
+    if not row:
+        cursor.execute("insert into balance(UserId, Balance) values (?, ?)", user.id, 0)
+        cnxn.commit()
+
+async def get_balance(user):
+    await open_account(user);
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    cursor.execute("select balance from Balance where UserId = ?", user.id)
+    row = cursor.fetchone()
+    if row:
+        return int(row.balance)
+    else:
+        return 0
+
+async def update_bank(user, change=0):
+    await open_account(user)
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    cursor.execute("select balance from Balance where UserId = ?", user.id)
+    row = cursor.fetchone()
+    row.balance = row.balance + change;
+    cursor.execute("Update Balance set balance = ? where UserId = ?", row.balance, user.id)
+
+    cnxn.commit()
+    return
+
+# ----------------------------------------------------------------------------------------------------------------------
+@client.command()
+async def ping(ctx):
+    await ctx.send(f"**Swish!**" + '\n'
+        + f"You got the shot off with just **{round(client.latency * 1000)}ms** left on the clock!")
+
+client.run('ODU5MTc4MTkwMjY1OTA5MjU5.YNo6Cw.mBy0i5d5itz8JQTtKDPMLI857LM')
