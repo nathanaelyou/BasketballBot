@@ -171,4 +171,4 @@ async def ping(ctx):
     await ctx.send(f"**Swish!**" + '\n'
         + f"You got the shot off with just **{round(client.latency * 1000)}ms** left on the clock!")
 
-client.run('ODU5MTc4MTkwMjY1OTA5MjU5.YNo6Cw.mBy0i5d5itz8JQTtKDPMLI857LM')
+client.run('ODU5MTc4MTkwMjY1OTA5MjU5.YNo6Cw.gAIJFhxx9vWo-NLa-eksa5r_mAY')
