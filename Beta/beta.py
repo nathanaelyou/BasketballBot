@@ -125,7 +125,7 @@ async def balance(ctx):
 @commands.cooldown(1,150,commands.BucketType.user)
 async def payday(ctx):
 
-    earnings = random.randrange(1001)
+    earnings = random.randrange(2001)
 
     em = discord.Embed(title=f"You received ${earnings} for your payday!", color=discord.Color.red())
     em.set_footer(text = f"Paid to {ctx.author.name}")
@@ -138,7 +138,7 @@ async def payday(ctx):
 @commands.cooldown(1,15,commands.BucketType.user)
 async def workout(ctx):
 
-    earnings = random.randrange(201)
+    earnings = random.randrange(401)
 
     em = discord.Embed(title=f"You went to workout, a fan gave you ${earnings}!", color=discord.Color.red())
     em.set_footer(text = f"Paid to {ctx.author.name}")
@@ -151,7 +151,7 @@ async def workout(ctx):
 @commands.cooldown(1,30,commands.BucketType.user)
 async def autograph(ctx):
 
-    earnings = random.randrange(501)
+    earnings = random.randrange(1001)
 
     em = discord.Embed(title=f"You went on to autograph and meet some fans. You received ${earnings}!",
                        color=discord.Color.red())
@@ -166,7 +166,7 @@ async def autograph(ctx):
 @commands.cooldown(1,60,commands.BucketType.user)
 async def sponsor(ctx):
 
-    earnings = random.randrange(751)
+    earnings = random.randrange(1501)
 
     em = discord.Embed(title=f"You drank some Gatorade, as part of the sponsorship deal, "
                              f"you received ${earnings}!", color=discord.Color.red())
@@ -176,13 +176,13 @@ async def sponsor(ctx):
     await update_bank(ctx.author, earnings)
 
 # .golf To Receive Money -----------------------------------------------------------------------------------------------
-@client.command(aliases = ['wholeinone', 'wio'])
+@client.command(aliases = ['holeinone', 'wio'])
 @commands.cooldown(1,45,commands.BucketType.user)
 async def golf(ctx):
 
-    earnings = random.randrange(601)
+    earnings = random.randrange(1201)
 
-    em = discord.Embed(title=f"You went golfing and made a whole in one."
+    em = discord.Embed(title=f"You went golfing and made a hole in one. "
                              f"A fan saw and gave you ${earnings}!", color=discord.Color.red())
     em.set_footer(text = f"Paid to {ctx.author.name}")
     await ctx.send(embed =em)
@@ -198,7 +198,7 @@ async def daily(ctx):
     em.set_footer(text = f"Paid to {ctx.author.name}")
     await ctx.send(embed =em)
 
-    await update_bank(ctx.author, 3030)
+    await update_bank(ctx.author, 10030)
 
 # .donate To Give User Money -------------------------------------------------------------------------------------------
 @client.command(aliases = ['share', 'send', 'give', 'gift'])
@@ -714,11 +714,11 @@ async def sponsor(ctx):
 
 # Help with Golf -------------------------------------------------------------------------------------------------------
 @help.command()
-async def gold(ctx):
+async def golf(ctx):
         em = discord.Embed(title="Golf Help", color=discord.Color.red())
-        em.add_field(name="Description:", value="Gives the user money after sinking a whole in one", inline=False)
+        em.add_field(name="Description:", value="Gives the user money after sinking a hole in one", inline=False)
         em.add_field(name="Usage:", value="`sponsor`", inline=False)
-        em.add_field(name="Aliases:", value="`wholeinone`,`wio`", inline=False)
+        em.add_field(name="Aliases:", value="`holeinone`,`hio`", inline=False)
         em.add_field(name="Cooldown:", value="`45 seconds`", inline=False)
         em.set_footer(text="Basketball Beta")
         await ctx.send(embed=em)
@@ -727,7 +727,7 @@ async def gold(ctx):
 @help.command()
 async def daily(ctx):
         em = discord.Embed(title="Daily Help", color=discord.Color.red())
-        em.add_field(name="Description:", value="Gives the user $3,030 as a daily reward", inline=False)
+        em.add_field(name="Description:", value="Gives the user $10,030 as a daily reward", inline=False)
         em.add_field(name="Usage:", value="`daily`", inline=False)
         em.add_field(name="Cooldown:", value="`1 day/86400 seconds`", inline=False)
         em.set_footer(text="Basketball Beta")
