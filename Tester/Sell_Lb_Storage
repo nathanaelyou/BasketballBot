@@ -14,13 +14,35 @@ async def on_ready():
     print("We have logged in as {0.user}".format(client))
 
 # ----------------------------------------------------------------------------------------------------------------------
-@client.command(aliases = ['give', 'gift'])
-@commands.cooldown(1,15,commands.BucketType.user)
-async def donate(ctx, member:discord.Member, item_name, amount = 1):
+@client.command(aliases = ["lb"])
+async def leaderboard(ctx):
 
-    await open_account(member)
+    em = discord.Embed(color=discord.Color.red())
 
-    res = await donate_this(ctx.author,member,item_name,amount)
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    cursor.execute("select Top 10 UserId, Balance from Balance order by Balance desc")
+    rows = cursor.fetchall()
+
+    index = 1
+    top10 = ""
+    for row in rows:
+        # member = row.UserId
+        amount = row.Balance
+        member = await client.fetch_user(row.UserId)
+        top10 = top10 + f"**{index}. {member}** - $" + "{:,}".format(int(amount)) + '\n'
+
+        index = index + 1
+
+    em.add_field(name= "Richest People in This Server", value = top10)
+    await ctx.send(embed=em)
+
+@client.command()
+async def sell(ctx,item,amount = 1):
+    await open_account(ctx.author)
+
+    res = await sell_this(ctx.author,item,amount)
 
     if not res[0]:
         if res[1]==1:
@@ -28,45 +50,13 @@ async def donate(ctx, member:discord.Member, item_name, amount = 1):
             await ctx.send(embed=em)
             return
         if res[1]==2:
-            em = discord.Embed(title=f"You don't have enough money in your wallet to buy {amount} {item_name}'s",
+            em = discord.Embed(title=f"You don't have enough items to sell {amount} {item}'s",
                                color=discord.Color.red())
             await ctx.send(embed=em)
             return
 
-    em = discord.Embed(title=f"You just bought {amount} {item_name}'s!", color=discord.Color.red())
+    em = discord.Embed(title=f"You just sold {amount} {item}'s for ${res[1]}!", color=discord.Color.red())
     await ctx.send(embed=em)
-
-async def donate_this(author,member,item_name,amount):
-    cnxn = pyodbc.connect(sql_connection)
-
-    cursor = cnxn.cursor()
-    cursor.execute("select ItemAmount from Inventory where UserId = ? and ItemName = ?",author.id, item_name)
-    row = cursor.fetchone()
-
-    if not row:
-        return [False,1]
-    ItemAmount = row.ItemAmount
-
-    if ItemAmount < amount:
-        return [False,2]
-
-    cursor = cnxn.cursor()
-
-    cursor.execute("Update Inventory set ItemAmount = ItemAmount - ? where UserId = ? and ItemName = ?",
-                   amount, author.id, item_name)
-
-    cursor.execute("select ItemAmount from Inventory where UserId = ? and ItemName = ?", member.id, item_name)
-    row = cursor.fetchone()
-
-    if not row:
-        cursor.execute("Insert into Inventory(UserId, ItemName, ItemAmount) values(?, ?, ?)",
-                       member.id, item_name, amount)
-    else:
-        cursor.execute("Update Inventory set ItemAmount = ItemAmount + ? where UserId = ? and ItemName = ?",
-                       amount, member.id, item_name)
-    cursor.commit()
-
-    return [True,ItemAmount]
 
 # ----------------------------------------------------------------------------------------------------------------------
 async def sell_this(user,item_name,amount):

@@ -100,11 +100,11 @@ async def ping(ctx):
 # b!invite To Invite The Bot & Join The Official Server ----------------------------------------------------------------
 @client.command()
 async def invite(ctx):
-    em = discord.Embed(title = "Baksetball Bot", color=discord.Color.red())
-    em.description = ("[**Click here to add me to your sever**]"
+    em = discord.Embed(title = "Basketball Bot", color=discord.Color.red())
+    em.description = ("[**Click here to add me to your server**]"
                       "(https://discord.com/api/oauth2/authorize?client_"
                       "id=858539055406120960&permissions=2147875904&scope=bot)." + '\n' +
-                      "[**Click here to join my official sever for giveaways and support**]"
+                      "[**Click here to join my official server for giveaways and support**]"
                       "(https://discord.gg/eshTCtcaA3).")
     await ctx.send(embed=em)
 
@@ -126,7 +126,7 @@ async def balance(ctx):
 @commands.cooldown(1,90,commands.BucketType.user)
 async def payday(ctx):
 
-    earnings = random.randrange(2001)
+    earnings = random.randrange(3001)
 
     em = discord.Embed(title=f"You received ${earnings} for your payday!", color=discord.Color.red())
     em.set_footer(text = f"Paid to {ctx.author.name}")
@@ -139,7 +139,7 @@ async def payday(ctx):
 @commands.cooldown(1,15,commands.BucketType.user)
 async def workout(ctx):
 
-    earnings = random.randrange(401)
+    earnings = random.randrange(601)
 
     em = discord.Embed(title=f"You went to workout, a fan gave you ${earnings}!", color=discord.Color.red())
     em.set_footer(text = f"Paid to {ctx.author.name}")
@@ -152,7 +152,7 @@ async def workout(ctx):
 @commands.cooldown(1,30,commands.BucketType.user)
 async def autograph(ctx):
 
-    earnings = random.randrange(1001)
+    earnings = random.randrange(1501)
 
     em = discord.Embed(title=f"You went on to autograph and meet some fans. You received ${earnings}!",
                        color=discord.Color.red())
@@ -167,7 +167,7 @@ async def autograph(ctx):
 @commands.cooldown(1,60,commands.BucketType.user)
 async def sponsor(ctx):
 
-    earnings = random.randrange(1501)
+    earnings = random.randrange(2251)
 
     em = discord.Embed(title=f"You drank some Gatorade! As part of the sponsorship deal, "
                              f"you received ${earnings}!", color=discord.Color.red())
@@ -177,13 +177,13 @@ async def sponsor(ctx):
     await update_bank(ctx.author, earnings)
 
 # b!golf To Receive Money ----------------------------------------------------------------------------------------------
-@client.command(aliases = ['holeinone', 'wio'])
+@client.command(aliases = ['holeinone', 'hio'])
 @commands.cooldown(1,45,commands.BucketType.user)
 async def golf(ctx):
 
-    earnings = random.randrange(1201)
+    earnings = random.randrange(1801)
 
-    em = discord.Embed(title=f"You went golfing and made a hole in one."
+    em = discord.Embed(title=f"You went golfing and made a hole in one. "
                              f"A fan saw and gave you ${earnings}!", color=discord.Color.red())
     em.set_footer(text = f"Paid to {ctx.author.name}")
     await ctx.send(embed =em)
@@ -195,16 +195,16 @@ async def golf(ctx):
 @commands.cooldown(1,86400,commands.BucketType.user)
 async def daily(ctx):
 
-    em = discord.Embed(title=f"You received $3,030 as your daily reward!", color=discord.Color.red())
+    em = discord.Embed(title=f"You received $15,030 as your daily reward!", color=discord.Color.red())
     em.set_footer(text = f"Paid to {ctx.author.name}")
     await ctx.send(embed =em)
 
-    await update_bank(ctx.author, 10030)
+    await update_bank(ctx.author, 15030)
 
-# b!donate To Give User Money ------------------------------------------------------------------------------------------
-@client.command(aliases = ['share', 'send', 'give', 'gift'])
+# b!transfer To Give User Money ----------------------------------------------------------------------------------------
+@client.command(aliases = ['share', 'send'])
 @commands.cooldown(1,15,commands.BucketType.user)
-async def donate(ctx, member:discord.Member, amount = None):
+async def transfer(ctx, member:discord.Member, amount = None):
 
     if amount == None:
         em = discord.Embed(title=f"Please put in a real number next time", color=discord.Color.red())
@@ -231,6 +231,32 @@ async def donate(ctx, member:discord.Member, amount = None):
 
     em = discord.Embed(title=f"From: {ctx.author.name}", color=discord.Color.red())
     em.add_field(name= f"To the {member.name} foundation", value=f"They have been given ${amount}!", inline=False)
+    em.set_footer(text="Basketball Bot")
+    await ctx.send(embed=em)
+
+# b!donate To Give The User Items --------------------------------------------------------------------------------------
+@client.command(aliases = ['give', 'gift'])
+@commands.cooldown(1,15,commands.BucketType.user)
+async def donate(ctx, member:discord.Member, item_name, amount = 1):
+
+    await open_account(member)
+
+    res = await donate_this(ctx.author,member,item_name,amount)
+
+    if not res[0]:
+        if res[1]==1:
+            em = discord.Embed(title="You don't even have that item!", color=discord.Color.red())
+            await ctx.send(embed=em)
+            return
+        if res[1]==2:
+            em = discord.Embed(title=f"You don't have enough items to give them {amount} {item_name}'s",
+                               color=discord.Color.red())
+            await ctx.send(embed=em)
+            return
+
+    em = discord.Embed(title=f"From: {ctx.author.name}", color=discord.Color.red())
+    em.add_field(name= f"To the {member.name} foundation",
+                 value=f"They have been given {amount} {item_name}'s!", inline=False)
     em.set_footer(text="Basketball Bot")
     await ctx.send(embed=em)
 
@@ -343,7 +369,7 @@ async def market(ctx, page = 1):
         for row in rows:
             em.add_field(name=row.Icon + " " + row.ItemName,
                          value = "**$" + "{:,}".format(int(row.Price)) + "**" + '\n' + row.Description, inline = False)
-        em.set_footer(text="Run 'shop [1-5]` to view other shop pages" + '\n' + f"Page {page} of 5")
+        em.set_footer(text="Run 'shop [1-8]` to view other shop pages" + '\n' + f"Page {page} of 8")
         await ctx.send(embed=em)
 
 # b!buy To Buy An Item In The Shop -------------------------------------------------------------------------------------
@@ -417,7 +443,7 @@ async def locker(ctx, page = 1):
         em = discord.Embed(title=f"{user.name}'s Locker Room", color=discord.Color.red())
         for row in rows:
             em.add_field(name=row.Icon + " " + row.ItemName.capitalize() + "'s",
-                         value="**" + "{:,}".format(int(row.ItemAmount)) + "**" , inline=False)
+                         value="**Amount: **" + "{:,}".format(int(row.ItemAmount)), inline=False)
         em.set_footer(text=f"Page {page} of {totalPages}")
         await ctx.send(embed=em)
 
@@ -475,7 +501,7 @@ async def buy_this(user, item_name, amount):
         return [False,1]
     price = row.Price
 
-    cost = int(price*amount*-1)
+    cost = int(price*amount)
 
     cursor.execute("select Balance from Balance where UserId = ?", user.id)
     row = cursor.fetchone()
@@ -497,9 +523,9 @@ async def buy_this(user, item_name, amount):
                        amount, user.id, item_name)
     cursor.commit()
 
-    await update_bank(user, cost)
+    await update_bank(user, cost*-1)
 
-    return [True, cost]
+    return [True, cost*-1]
 
 # Defines sell_this To Sell Item ---------------------------------------------------------------------------------------
 async def sell_this(user,item_name,amount):
@@ -534,6 +560,39 @@ async def sell_this(user,item_name,amount):
     await update_bank(user, cost)
 
     return [True,cost]
+
+# Defines donate_this To Give Items ------------------------------------------------------------------------------------
+async def donate_this(author,member,item_name,amount):
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    cursor.execute("select ItemAmount from Inventory where UserId = ? and ItemName = ?",author.id, item_name)
+    row = cursor.fetchone()
+
+    if not row:
+        return [False,1]
+    ItemAmount = row.ItemAmount
+
+    if ItemAmount < amount:
+        return [False,2]
+
+    cursor = cnxn.cursor()
+
+    cursor.execute("Update Inventory set ItemAmount = ItemAmount - ? where UserId = ? and ItemName = ?",
+                   amount, author.id, item_name)
+
+    cursor.execute("select ItemAmount from Inventory where UserId = ? and ItemName = ?", member.id, item_name)
+    row = cursor.fetchone()
+
+    if not row:
+        cursor.execute("Insert into Inventory(UserId, ItemName, ItemAmount) values(?, ?, ?)",
+                       member.id, item_name, amount)
+    else:
+        cursor.execute("Update Inventory set ItemAmount = ItemAmount + ? where UserId = ? and ItemName = ?",
+                       amount, member.id, item_name)
+    cursor.commit()
+
+    return [True,ItemAmount]
 
 # Basketball Commands --------------------------------------------------------------------------------------------------
 # b!search [player] to find all active players with the name -----------------------------------------------------------
@@ -616,7 +675,8 @@ async def help(ctx):
                                                           "`sponsor`,"
                                                           "`golf`,"
                                                           "`daily`,"
-                                                          "`donate`,"
+                                                          "`transfer`,"
+                                                          "`donate`"
                                                           "`invest`,"
                                                           "`leaderboard`", inline=False)
     em.add_field(name = ":shopping_cart: **Shop**", value = "`market`,"
@@ -719,7 +779,7 @@ async def sponsor(ctx):
 async def golf(ctx):
         em = discord.Embed(title="Golf Help", color=discord.Color.red())
         em.add_field(name="Description:", value="Gives the user money after sinking a hole in one", inline=False)
-        em.add_field(name="Usage:", value="`sponsor`", inline=False)
+        em.add_field(name="Usage:", value="`golf`", inline=False)
         em.add_field(name="Aliases:", value="`holeinone`,`hio`", inline=False)
         em.add_field(name="Cooldown:", value="`45 seconds`", inline=False)
         em.set_footer(text="Basketball Bot")
@@ -729,21 +789,32 @@ async def golf(ctx):
 @help.command()
 async def daily(ctx):
         em = discord.Embed(title="Daily Help", color=discord.Color.red())
-        em.add_field(name="Description:", value="Gives the user $10,030 as your daily reward", inline=False)
+        em.add_field(name="Description:", value="Gives the user $15,030 as your daily reward", inline=False)
         em.add_field(name="Usage:", value="`daily`", inline=False)
         em.add_field(name="Cooldown:", value="`1 day/86400 seconds`", inline=False)
         em.set_footer(text="Basketball Bot")
         await ctx.send(embed=em)
 
-# Help with Donate -----------------------------------------------------------------------------------------------------
+# Help with Transfer ---------------------------------------------------------------------------------------------------
+@help.command()
+async def transfer(ctx):
+        em = discord.Embed(title="Transfer Help", color=discord.Color.red())
+        em.add_field(name="Description:", value="Gives the mentioned user the specified amount of money", inline=False)
+        em.add_field(name="Usage:", value="`transfer [@user] [amount]`", inline=False)
+        em.add_field(name="Aliases:", value="`share`,`send`", inline=False)
+        em.add_field(name="Cooldown:", value="`15 seconds`", inline=False)
+        em.set_footer(text="Basketball Bot")
+        await ctx.send(embed=em)
+
+# Help with Donate ---------------------------------------------------------------------------------------------------
 @help.command()
 async def donate(ctx):
         em = discord.Embed(title="Donate Help", color=discord.Color.red())
-        em.add_field(name="Description:", value="Gives the mentioned user the specified amount of money", inline=False)
-        em.add_field(name="Usage:", value="`donate [@user] [amount]`", inline=False)
-        em.add_field(name="Aliases:", value="`share`,`send`,`give`,`gift`", inline=False)
+        em.add_field(name="Description:", value="Gives the mentioned user the specified amount of items", inline=False)
+        em.add_field(name="Usage:", value="`donate [@user] [item name] [amount]`", inline=False)
+        em.add_field(name="Aliases:", value="`give`,`gift`", inline=False)
         em.add_field(name="Cooldown:", value="`15 seconds`", inline=False)
-        em.set_footer(text="Basketball Bot")
+        em.set_footer(text="Basketball Beta")
         await ctx.send(embed=em)
 
 # Help with Invest -----------------------------------------------------------------------------------------------------
