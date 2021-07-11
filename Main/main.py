@@ -676,13 +676,13 @@ async def help(ctx):
                                                           "`golf`,"
                                                           "`daily`,"
                                                           "`transfer`,"
-                                                          "`donate`"
+                                                          "`donate`," + '\n'
                                                           "`invest`,"
-                                                          "`leaderboard`", inline=False)
-    em.add_field(name = ":shopping_cart: **Shop**", value = "`market`,"
-                                                            "`buy`,"
-                                                            "`sell`,"
-                                                            "`locker`", inline=False)
+                                                          "`leaderboard`,"
+                                                          "`market`,"
+                                                          "`buy`,"
+                                                          "`sell`,"
+                                                          "`locker`", inline=False)
     em.add_field(name = ":basketball: **Basketball**", value = "`search`,"
                                                                "`stats`,`"
                                                                "info`", inline=False)
