@@ -70,23 +70,28 @@ client.remove_command('help')
 
 # Command Responses ----------------------------------------------------------------------------------------------------
 # Inompleted Command Response ------------------------------------------------------------------------------------------
+# Command Responses ----------------------------------------------------------------------------------------------------
+# Inompleted Command Response ------------------------------------------------------------------------------------------
 @client.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         msg = "Rerun the command and put in all the required arguments next time"
-        em = discord.Embed(title = msg, color=discord.Color.red())
+        em = discord.Embed(title = "", color=discord.Color.red())
+        em.add_field(name="Woah There!", value=msg, inline=False)
         await ctx.send(embed=em)
 
 # Fake Player Name Response --------------------------------------------------------------------------------------------
     elif isinstance(error, commands.CommandInvokeError):
         msg = "Try putting in the correct arguments next time"
-        em = discord.Embed(title = msg, color=discord.Color.red())
+        em = discord.Embed(title ="", color=discord.Color.red())
+        em.add_field(name="Don't Break Me!", value=msg, inline=False)
         await ctx.send(embed=em)
 
 # Command Cooldown Response---------------------------------------------------------------------------------------------
     elif isinstance(error, commands.CommandOnCooldown):
-        msg = "**Woah chillllll**, you can't use this command for another **{:.2f} seconds**".format(error.retry_after)
-        em = discord.Embed(title = msg, color=discord.Color.red())
+        msg = "You can't use this command for another **{:.2f} seconds**".format(error.retry_after)
+        em = discord.Embed(title = "", color=discord.Color.red())
+        em.add_field(name="Woah Chill!", value=msg)
         await ctx.send(embed=em)
 
 # Utility Commands -----------------------------------------------------------------------------------------------------
@@ -127,8 +132,8 @@ async def payday(ctx):
 
     earnings = random.randrange(3001)
 
-    em = discord.Embed(title=f"You received ${earnings} for your payday!", color=discord.Color.red())
-    em.set_footer(text = f"Paid to {ctx.author.name}")
+    em = discord.Embed(title="", color=discord.Color.red())
+    em.add_field(name = f"You received ${earnings} for your payday!", value = f"Paid to {ctx.author.name}")
     await ctx.send(embed =em)
 
     await update_bank(ctx.author, earnings)
@@ -140,8 +145,8 @@ async def workout(ctx):
 
     earnings = random.randrange(601)
 
-    em = discord.Embed(title=f"You went to workout, a fan gave you ${earnings}!", color=discord.Color.red())
-    em.set_footer(text = f"Paid to {ctx.author.name}")
+    em = discord.Embed(title="", color=discord.Color.red())
+    em.add_field(name = f"You went to workout, a fan gave you ${earnings}!", value = f"Paid to {ctx.author.name}")
     await ctx.send(embed =em)
 
     await update_bank(ctx.author, earnings)
@@ -153,9 +158,9 @@ async def autograph(ctx):
 
     earnings = random.randrange(1501)
 
-    em = discord.Embed(title=f"You went on to autograph and meet some fans. You received ${earnings}!",
-                       color=discord.Color.red())
-    em.set_footer(text = f"Paid to {ctx.author.name}")
+    em = discord.Embed(title="", color=discord.Color.red())
+    em.add_field(name = f"You went out to meet some fans and sign some autographs. You received ${earnings}!",
+                 value = f"Paid to {ctx.author.name}")
     await ctx.send(embed =em)
 
     await update_bank(ctx.author, earnings)
@@ -168,9 +173,9 @@ async def sponsor(ctx):
 
     earnings = random.randrange(2251)
 
-    em = discord.Embed(title=f"You drank some Gatorade, as part of the sponsorship deal, "
-                             f"you received ${earnings}!", color=discord.Color.red())
-    em.set_footer(text = f"Paid to {ctx.author.name}")
+    em = discord.Embed(title="", color=discord.Color.red())
+    em.add_field(name = f"You drank some Gatorade! As part of the sponsorship deal, you received ${earnings}!",
+                 value = f"Paid to {ctx.author.name}")
     await ctx.send(embed =em)
 
     await update_bank(ctx.author, earnings)
@@ -182,9 +187,9 @@ async def golf(ctx):
 
     earnings = random.randrange(1801)
 
-    em = discord.Embed(title=f"You went golfing and made a hole in one. "
-                             f"A fan saw and gave you ${earnings}!", color=discord.Color.red())
-    em.set_footer(text = f"Paid to {ctx.author.name}")
+    em = discord.Embed(title="", color=discord.Color.red())
+    em.add_field(name = f"You went golfing and made a hole in one. A fan saw and gave you ${earnings}!",
+                 value = f"Paid to {ctx.author.name}")
     await ctx.send(embed =em)
 
     await update_bank(ctx.author, earnings)
@@ -194,8 +199,9 @@ async def golf(ctx):
 @commands.cooldown(1,86400,commands.BucketType.user)
 async def daily(ctx):
 
-    em = discord.Embed(title=f"You received $15,030 as your daily reward!", color=discord.Color.red())
-    em.set_footer(text = f"Paid to {ctx.author.name}")
+    em = discord.Embed(title="", color=discord.Color.red())
+    em.add_field(name = f"You received $10,030 as your daily reward!",
+                 value = f"Paid to {ctx.author.name}")
     await ctx.send(embed =em)
 
     await update_bank(ctx.author, 10030)
@@ -236,11 +242,11 @@ async def transfer(ctx, member:discord.Member, amount = None):
 # .donate To Give The User Items ---------------------------------------------------------------------------------------
 @client.command(aliases = ['give', 'gift'])
 @commands.cooldown(1,15,commands.BucketType.user)
-async def donate(ctx, member:discord.Member, item_name, amount = 1):
+async def donate(ctx, member:discord.Member,amount, item_name):
 
     await open_account(member)
 
-    res = await donate_this(ctx.author,member,item_name,amount)
+    res = await donate_this(ctx.author,member, amount, item_name)
 
     if not res[0]:
         if res[1]==1:
@@ -561,7 +567,7 @@ async def sell_this(user,item_name,amount):
     return [True,cost]
 
 # Defines donate_this To Give Items ------------------------------------------------------------------------------------
-async def donate_this(author,member,item_name,amount):
+async def donate_this(author,member,amount, item_name):
     cnxn = pyodbc.connect(sql_connection)
 
     cursor = cnxn.cursor()
@@ -613,7 +619,7 @@ async def search(ctx, *, name):
     if not has_active_players:
         info = "There are no active players with the name " + name
     em = discord.Embed(title="Basketball Beta Search", color=discord.Color.red())
-    em.add_field(name="All active NBA players with the name `" + name + "`:", value = info, inline=False)
+    em.add_field(name="All active NBA players with the name `" + name.capitalize() + "`:", value = info, inline=False)
     await ctx.send(embed = em)
 
 # .stats [player] to get players stats ---------------------------------------------------------------------------------

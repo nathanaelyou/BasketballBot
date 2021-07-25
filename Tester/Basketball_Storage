@@ -1,17 +1,3 @@
-import discord
-from discord.ext import commands
-import pyodbc
-from datetime import datetime
-
-sql_connection = 'DRIVER={SQL Server Native Client 11.0};SERVER=localhost;DATABASE=BotTester;UID=sa;PWD=wa11paper'
-
-client = commands.Bot(command_prefix = "t!")
-
-@client.event
-async def on_ready():
-    await client.change_presence(activity=discord.Game('t!help'))
-    print("We have logged in as {0.user}".format(client))
-
 # t!search -------------------------------------------------------------------------------------------------------------
 @client.command()
 @commands.cooldown(1,3,commands.BucketType.user)
@@ -372,11 +358,3 @@ async def playoffstats(ctx, *, args):
         em.add_field(name="Fouls Per Game", value=str(format_field(row.Fouls)) + " | " + str(format_field(rowc.Fouls)))
         em.add_field(name="Points Per Game", value=(str(row.Points) + " | " + str(rowc.Points)))
         await ctx.send(embed = em)
-
-# ----------------------------------------------------------------------------------------------------------------------
-@client.command()
-async def ping(ctx):
-    await ctx.send(f"**Swish!**" + '\n'
-        + f"You got the shot off with just **{round(client.latency * 1000)}ms** left on the clock!")
-
-client.run('ODU5MTc4MTkwMjY1OTA5MjU5.YNo6Cw.gAIJFhxx9vWo-NLa-eksa5r_mAY')
