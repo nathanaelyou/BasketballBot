@@ -62,15 +62,12 @@ async def on_message(message):
 # Bot Setup ------------------------------------------------------------------------------------------------------------
 @client.event
 async def on_ready():
-    await client.change_presence(activity=discord.Game('.help'))
+    await client.change_presence(activity=discord.Game(f".help in {len(client.guilds)} servers"))
     print("We have logged in as {0.user}".format(client))
 
 # Removes Default help Command -----------------------------------------------------------------------------------------
 client.remove_command('help')
 
-# Command Responses ----------------------------------------------------------------------------------------------------
-# Inompleted Command Response ------------------------------------------------------------------------------------------
-# Command Responses ----------------------------------------------------------------------------------------------------
 # Inompleted Command Response ------------------------------------------------------------------------------------------
 @client.event
 async def on_command_error(ctx, error):

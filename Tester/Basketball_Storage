@@ -305,8 +305,9 @@ async def playoffstats(ctx, *, args):
     if cursor.rowcount == 0:
         em = discord.Embed(color=discord.Color.red())
         em.add_field(name=player.capitalize() + "Stats",
-                     value="There are no players with the name: `" + player.capitalize() + ":(`",
+                     value="There are no players with the name: `" + player.capitalize() + "`",
                      inline=False)
+        em.set_footer(text="Or they've never been to the playoffs")
         await ctx.send(embed=em)
     else:
         em = discord.Embed(title=player.capitalize() + "Stats (" + row.Team + ") " + str(row.Age) + " y/o "

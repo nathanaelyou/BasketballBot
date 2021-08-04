@@ -63,7 +63,7 @@ async def on_message(message):
 @client.event
 async def on_ready():
     # Bot status
-    await client.change_presence(activity=discord.Game('b!help'))
+    await client.change_presence(activity=discord.Game(f"b!help in {len(client.guilds)} servers"))
     print("We have logged in as {0.user}".format(client))
 
 # Removes Default help Command -----------------------------------------------------------------------------------------

@@ -12,6 +12,8 @@ def getfromtable(table, playoffs, player_id):
         else:
             return None
 
+    if table is None:
+        return
     rows = table.find_all("tr")
     for row in rows:
         if (row.th != None and row.th['data-stat'] == 'season' and row.th['scope'] == 'row' and row.th.get_text()!= ""):
@@ -50,6 +52,10 @@ def getfromtable(table, playoffs, player_id):
             #       fg3_pct, fg2_per_g, fg2a_per_g, fg2_pct, efg_pct, ft_per_g, fta_per_g, ft_pct, orb_per_g, drb_per_g,
             #       trb_per_g, ast_per_g, stl_per_g, blk_per_g, tov_per_g, pf_per_g, pts_per_g)
 
+            # cursor.execute("insert into PlayerStats (PlayerId, Playoffs, Season, Age, Team, Position, GamesPlayed"
+            #                ")"
+            #                "values (?, ?, ?, ?, ?, ?, ?)",
+            #                player_id, playoffs, season, age, team_id, pos, g)
             cursor.execute("insert into PlayerStats (PlayerId, Playoffs, Season, Age, Team, Position, GamesPlayed,"
                            " GamesStarted, MinPerGame, FgPerGame, FgaPerGame, FgPercent, Fg3PerGame, Fg3aPerGame, "
                            "Fg3Percent, Fg2PerGame, Fg2aPerGame, Fg2Percent, EfgPercent, FtPerGame, FtaPerGame, "
@@ -229,3 +235,93 @@ def getSalaryInfo():
                             y1, y2, y3, y4, y5, y6, playerid)
 
     cursor.commit()
+
+# TEAMS
+def team():
+    url = 'https://www.basketball-reference.com/teams/'
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    # print(soup)
+    table = soup.find(id="teams_active")
+    # print(table)
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+
+    teams = table.find_all("tr", class_ = "full_table")
+    for team in teams:
+        team_id = team.th.a["href"]
+        team_name = team.th.a.get_text()
+        print(team_id[7:-1], team_name)
+        cursor.execute("insert into Teams(TeamId, TeamName) values(?, ?)", team_id[7:-1], team_name)
+    cursor.commit()
+
+team()
+
+# TEAM SALARY
+def team_salary():
+    def getSalary(row, year):
+        salary = row.find("td", attrs={"data-stat": year})
+        if salary is not None and salary.has_attr('csk'):
+            return salary["csk"]
+        else:
+            return None
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+
+    cursor.execute("select AltTeamId from Teams")
+    teams = cursor.fetchall()
+
+    for team in teams:
+        url = 'https://www.basketball-reference.com/contracts/' + team.AltTeamId + '.html'
+        page = requests.get(url)
+        soup = BeautifulSoup(page.content, 'html.parser')
+        # print(soup)
+        table = soup.find(id="contracts")
+        print(url)
+        # print(table)
+        rows = table.find_all("tr")
+
+        cnxn = pyodbc.connect(sql_connection)
+        cursor = cnxn.cursor()
+
+        for row in rows:
+            player = row.find("th", attrs={"data-stat": "player", "scope": "row"})
+            if player is not None and row.th.has_attr('csk'):
+                # print(row)
+                player_id = row.th['csk']
+                y1 = getSalary(row, "y1")
+                y2 = getSalary(row, "y2")
+                y3 = getSalary(row, "y3")
+                y4 = getSalary(row, "y4")
+                y5 = getSalary(row, "y5")
+                y6 = getSalary(row, "y6")
+                print(player_id, y1, y2, y3, y4, y5, y6)
+                cursor.execute("Insert into TeamSalary(TeamId, PlayerId, Salary1, Salary2, Salary3, Salary4, Salary5, "
+                               "Salary6) Values(?, ?, ?, ?, ?, ?, ?, ?)",
+                               team.AltTeamId, player_id, y1, y2, y3, y4, y5, y6)
+        cursor.commit()
+
+team_salary()
+
+# TEAM LOGO
+def team_logo():
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+
+    cursor.execute("select AltTeamId from Teams")
+    rows = cursor.fetchall()
+
+    for row in rows:
+        team_image = 'https://d2p3bygnnzw9w3.cloudfront.net/req/202107263/tlogo/bbr/' + row.AltTeamId + '-2021.png'
+
+        cursor.execute("update Teams set TeamLogo = ? where AltTeamId = ?", team_image, row.AltTeamId)
+        print(team_image)
+    cursor.commit()
+
+team_logo()
