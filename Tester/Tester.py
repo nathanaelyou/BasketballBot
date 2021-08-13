@@ -83,6 +83,7 @@ async def salary(ctx, *, player = ""):
                         + "**2024:** " + format_salary(salary4) + '\n'
                         + "**2025:** " + format_salary(salary5) + '\n'
                         + "**2026:** " + format_salary(salary6))
+        em.set_footer(text="Data From Basketball Reference")
         await ctx.send(embed = em)
 
 # t!playerinfo ---------------------------------------------------------------------------------------------------------
@@ -125,8 +126,8 @@ async def playerinfo(ctx, *, player = ""):
 
     if cursor.rowcount == 0:
         em = discord.Embed(color=discord.Color.red())
-        em.add_field(name=player.capitalize() + "'s Info",
-                     value="There are no players with the name: `" + player.capitalize() + "`",
+        em.add_field(name=player.title() + "'s Info",
+                     value="There are no players with the name: `" + player.title() + "`",
                      inline=False)
         await ctx.send(embed=em)
     else:
@@ -161,6 +162,7 @@ async def playerinfo(ctx, *, player = ""):
             em.add_field(name="Height", value=format_field(height))
             em.add_field(name="Weight", value=str(format_field(weight)) + " lb")
             em.add_field(name="Jersey Number", value=format_field(jersey_number))
+            em.set_footer(text="Data From Basketball Reference")
             await ctx.send(embed = em)
 
 # t!stats --------------------------------------------------------------------------------------------------------------
@@ -178,9 +180,15 @@ async def stats(ctx, *, args):
 
     def format_field(field):
         if field is None or field == "":
-            return "0"
+            return 0
         else:
             return field
+
+    def format_percent(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return '{:.1f}'.format(field * 100)
 
     cnxn = pyodbc.connect(sql_connection)
 
@@ -213,29 +221,32 @@ async def stats(ctx, *, args):
 
     if cursor.rowcount == 0:
         em = discord.Embed(color=discord.Color.red())
-        em.add_field(name=player.capitalize() + "Stats",
-                     value="There are no players with the name: `" + player.capitalize() + ":(`",
+        em.add_field(name=player.title() + "Stats",
+                     value="There are no players with the name: `" + player.title() + "`",
                      inline=False)
         await ctx.send(embed=em)
     else:
-        em = discord.Embed(title=player.capitalize() + "Stats (" + row.Team + ") " + str(row.Age) + " y/o "
+        em = discord.Embed(title=player.title() + "Stats (" + row.Team + ") " + str(row.Age) + " y/o "
                                  + row.Position, color=discord.Color.red())
         if row.Image is None:
             pass
         else:
             em.set_thumbnail(url=row.Image)
         em.add_field(name="Year | Career", value=str(row.Season) + " | Career")
-        em.add_field(name="Games Started/Played", value=str(row.GamesStarted) + " of " + str(row.GamesPlayed) + " | "
-                                                + str(rowc.GamesStarted) + " of " + str(rowc.GamesPlayed))
-        em.add_field(name="Minutes Per Game", value=str(row.MinPerGame) + " | " + str(rowc.MinPerGame))
-        em.add_field(name="Fg%/2Pt%/3Pt%/Ft%", value="__" + str(format_field('{:.1f}'.format(row.FgPercent * 100))) +
-                                            "/" + str(format_field('{:.1f}'.format(row.Fg2Percent * 100))) + "/" +
-                                            str(format_field('{:.1f}'.format(row.Fg3Percent * 100))) + "/" +
-                                            str(format_field('{:.1f}'.format(row.FtPercent * 100))) + "__" + '\n' +
-                                            str(format_field('{:.1f}'.format(rowc.FgPercent * 100))) + "/" +
-                                            str(format_field('{:.1f}'.format(rowc.Fg2Percent * 100))) + "/" +
-                                            str(format_field('{:.1f}'.format(rowc.Fg3Percent * 100))) + "/" +
-                                            str(format_field('{:.1f}'.format(rowc.FtPercent * 100))))
+        em.add_field(name="Games Started/Played", value=str(format_field(row.GamesStarted)) + " of " +
+                                                        str(format_field(row.GamesPlayed)) + " | " +
+                                                        str(format_field(rowc.GamesStarted)) + " of " +
+                                                        str(format_field(rowc.GamesPlayed)))
+        em.add_field(name="Minutes Per Game", value=str(format_field(row.MinPerGame)) + " | " +
+                                                    str(format_field(rowc.MinPerGame)))
+        em.add_field(name="Fg%/2Pt%/3Pt%/Ft%", value="__" + str(format_percent(row.FgPercent)) +
+                                            "/" + str(format_percent(row.Fg2Percent)) + "/" +
+                                            str(format_percent(row.Fg3Percent)) + "/" +
+                                            str(format_percent(row.FtPercent)) + "__" + '\n' +
+                                            str(format_percent(rowc.FgPercent)) + "/" +
+                                            str(format_percent(rowc.Fg2Percent)) + "/" +
+                                            str(format_percent(rowc.Fg3Percent)) + "/" +
+                                            str(format_percent(rowc.FtPercent)))
         em.add_field(name="Fg/2Pt/3Pt/Ft Shooting", value=str(format_field(row.FgPerGame)) + "/" +
                                             str(format_field(row.Fg2PerGame)) + "/" + str(format_field(row.Fg3PerGame))
                                             + "/" + str(format_field(row.FtPerGame)) + " Makes On" + '\n' +
@@ -265,7 +276,9 @@ async def stats(ctx, *, args):
         em.add_field(name="Turnovers Per Game", value=str(format_field(row.Turnovers)) + " | " +
                                                       str(format_field(rowc.Turnovers)))
         em.add_field(name="Fouls Per Game", value=str(format_field(row.Fouls)) + " | " + str(format_field(rowc.Fouls)))
-        em.add_field(name="Points Per Game", value=(str(row.Points) + " | " + str(rowc.Points)))
+        em.add_field(name="Points Per Game", value=(str(format_field(row.Points)) + " | " +
+                                                    str(format_field(rowc.Points))))
+        em.set_footer(text="Data From Basketball Reference")
         await ctx.send(embed = em)
 
 # t!playoffstats -------------------------------------------------------------------------------------------------------
@@ -283,9 +296,15 @@ async def playoffstats(ctx, *, args):
 
     def format_field(field):
         if field is None or field == "":
-            return "0"
+            return 0
         else:
             return field
+
+    def format_percent(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return '{:.1f}'.format(field * 100)
 
     cnxn = pyodbc.connect(sql_connection)
 
@@ -318,30 +337,33 @@ async def playoffstats(ctx, *, args):
 
     if cursor.rowcount == 0:
         em = discord.Embed(color=discord.Color.red())
-        em.add_field(name=player.capitalize() + "Stats",
-                     value="There are no players with the name: `" + player.capitalize() + "`",
+        em.add_field(name=player.title() + "Playoff Stats",
+                     value="There are no players with the name: `" + player.title() + "`",
                      inline=False)
         em.set_footer(text="Or they've never been to the playoffs")
         await ctx.send(embed=em)
     else:
-        em = discord.Embed(title=player.capitalize() + "Stats (" + row.Team + ") " + str(row.Age) + " y/o "
+        em = discord.Embed(title=player.title() + "Playoff Stats (" + row.Team + ") " + str(row.Age) + " y/o "
                                  + row.Position, color=discord.Color.red())
         if row.Image is None:
             pass
         else:
             em.set_thumbnail(url=row.Image)
         em.add_field(name="Year | Career", value=str(row.Season) + " | Career")
-        em.add_field(name="Games Started/Played", value=str(row.GamesStarted) + " of " + str(row.GamesPlayed) + " | "
-                                                + str(rowc.GamesStarted) + " of " + str(rowc.GamesPlayed))
-        em.add_field(name="Minutes Per Game", value=str(row.MinPerGame) + " | " + str(rowc.MinPerGame))
-        em.add_field(name="Fg%/2Pt%/3Pt%/Ft%", value="__" + str(format_field('{:.1f}'.format(row.FgPercent * 100))) +
-                                            "/" + str(format_field('{:.1f}'.format(row.Fg2Percent * 100))) + "/" +
-                                            str(format_field('{:.1f}'.format(row.Fg3Percent * 100))) + "/" +
-                                            str(format_field('{:.1f}'.format(row.FtPercent * 100))) + "__" + '\n' +
-                                            str(format_field('{:.1f}'.format(rowc.FgPercent * 100))) + "/" +
-                                            str(format_field('{:.1f}'.format(rowc.Fg2Percent * 100))) + "/" +
-                                            str(format_field('{:.1f}'.format(rowc.Fg3Percent * 100))) + "/" +
-                                            str(format_field('{:.1f}'.format(rowc.FtPercent * 100))))
+        em.add_field(name="Games Started/Played", value=str(format_field(row.GamesStarted)) + " of " +
+                                                        str(format_field(row.GamesPlayed)) + " | " +
+                                                        str(format_field(rowc.GamesStarted)) + " of " +
+                                                        str(format_field(rowc.GamesPlayed)))
+        em.add_field(name="Minutes Per Game", value=str(format_field(row.MinPerGame)) + " | " +
+                                                    str(format_field(rowc.MinPerGame)))
+        em.add_field(name="Fg%/2Pt%/3Pt%/Ft%", value="__" + str(format_percent(row.FgPercent)) +
+                                            "/" + str(format_percent(row.Fg2Percent)) + "/" +
+                                            str(format_percent(row.Fg3Percent)) + "/" +
+                                            str(format_percent(row.FtPercent)) + "__" + '\n' +
+                                            str(format_percent(rowc.FgPercent)) + "/" +
+                                            str(format_percent(rowc.Fg2Percent)) + "/" +
+                                            str(format_percent(rowc.Fg3Percent)) + "/" +
+                                            str(format_percent(rowc.FtPercent)))
         em.add_field(name="Fg/2Pt/3Pt/Ft Shooting", value=str(format_field(row.FgPerGame)) + "/" +
                                             str(format_field(row.Fg2PerGame)) + "/" + str(format_field(row.Fg3PerGame))
                                             + "/" + str(format_field(row.FtPerGame)) + " Makes On" + '\n' +
@@ -371,7 +393,9 @@ async def playoffstats(ctx, *, args):
         em.add_field(name="Turnovers Per Game", value=str(format_field(row.Turnovers)) + " | " +
                                                       str(format_field(rowc.Turnovers)))
         em.add_field(name="Fouls Per Game", value=str(format_field(row.Fouls)) + " | " + str(format_field(rowc.Fouls)))
-        em.add_field(name="Points Per Game", value=(str(row.Points) + " | " + str(rowc.Points)))
+        em.add_field(name="Points Per Game", value=(str(format_field(row.Points)) + " | " +
+                                                    str(format_field(rowc.Points))))
+        em.set_footer(text="Data From Basketball Reference")
         await ctx.send(embed = em)
 
 # t!teams --------------------------------------------------------------------------------------------------------------
@@ -463,6 +487,7 @@ async def teamsalary(ctx, team):
         em.add_field(name="Total: $" + str("{:,}".format(team_1)) + " | $" + str("{:,}".format(team_2)) + " | $" +
                           str("{:,}".format(team_3)) + " | $" + str("{:,}".format(team_4)) +
                           " | $" + str("{:,}".format(team_5)) + " | $" + str("{:,}".format(team_6)), value= team_tot)
+        em.set_footer(text="Data From Basketball Reference")
         await ctx.send(embed=em)
 
 # t!totals -------------------------------------------------------------------------------------------------------------
@@ -480,9 +505,15 @@ async def totals(ctx, *, args):
 
     def format_field(field):
         if field is None or field == "":
-            return "0"
+            return 0
         else:
             return field
+
+    def format_num(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return '{:,}'.format(field)
 
     cnxn = pyodbc.connect(sql_connection)
 
@@ -514,59 +545,59 @@ async def totals(ctx, *, args):
 
     if cursor.rowcount == 0:
         em = discord.Embed(color=discord.Color.red())
-        em.add_field(name=player.capitalize() + "Totals",
-                     value="There are no players with the name: `" + player.capitalize() + ":(`",
+        em.add_field(name=player.title() + "Totals",
+                     value="There are no players with the name: `" + player.title() + "`",
                      inline=False)
         await ctx.send(embed=em)
     else:
-        em = discord.Embed(title=player.capitalize() + "Totals (" + row.Team + ") " + str(row.Age) + " y/o "
+        em = discord.Embed(title=player.title() + "Totals (" + row.Team + ") " + str(row.Age) + " y/o "
                                  + row.Position, color=discord.Color.red())
         if row.Image is None:
             pass
         else:
             em.set_thumbnail(url=row.Image)
         em.add_field(name="Year | Career", value=str(row.Season) + " | Career")
-        em.add_field(name="Games Started/Played", value=str(row.GamesStarted) + " of " + str(row.GamesPlayed) + " | " +
-                                                        str('{:,}'.format(rowc.GamesStarted)) + " of " +
-                                                        str('{:,}'.format(rowc.GamesPlayed)))
-        em.add_field(name="Minutes Played", value=str('{:,}'.format(row.MinutesPlayed)) + " | " +
-                                                  str('{:,}'.format(rowc.MinutesPlayed)))
-        em.add_field(name="Fg/2Pt/3Pt/Ft Shooting", value=str('{:,}'.format(format_field(row.FgMade))) + "/" +
-                                            str('{:,}'.format(format_field(row.Fg2Made))) + "/" +
-                                            str('{:,}'.format(format_field(row.Fg3Made))) +
-                                            "/" + str('{:,}'.format(format_field(row.FtMade))) + " Makes On" + '\n' +
-                                            "__" + str('{:,}'.format(format_field(row.FgAttempts))) + "/" +
-                                            str('{:,}'.format(format_field(row.Fg2Attempts))) + "/" +
-                                            str('{:,}'.format(format_field(row.Fg3Attempts))) + "/" +
-                                            str('{:,}'.format(format_field(row.FtAttempts)))
-                                            + " Attempts__" + '\n' + str('{:,}'.format(format_field(rowc.FgMade))) +
-                                            "/" + str('{:,}'.format(format_field(rowc.Fg2Made))) + "/" +
-                                            str('{:,}'.format(format_field(rowc.Fg3Made))) + "/" +
-                                            str('{:,}'.format(format_field(rowc.FtMade))) +
-                                            " Makes On" + '\n' + str('{:,}'.format(format_field(rowc.FgAttempts))) +
-                                            "/" + str('{:,}'.format(format_field(rowc.Fg2Attempts))) + "/" +
-                                            str('{:,}'.format(format_field(rowc.Fg3Attempts))) + "/" +
-                                            str('{:,}'.format(format_field(rowc.FtAttempts))) + " Attempts",
-                                            inline=False)
-        em.add_field(name="Rebounds", value="__" + str('{:,}'.format(row.Rebounds)) + " (Offensive: " +
-                                            str('{:,}'.format(format_field(row.OffRebound))) +
-                                            ", Defensive: " + str('{:,}'.format(format_field(row.DefRebound))) + ")__" +
-                                            '\n' + str('{:,}'.format(format_field(rowc.Rebounds))) + " (Offensive: "
-                                            + str('{:,}'.format(format_field(rowc.OffRebound))) +
-                                            ", Defensive: " + str('{:,}'.format(format_field(rowc.DefRebound)))
-                                            + ")", inline = False)
-        em.add_field(name="Assists", value=str('{:,}'.format(format_field(row.Assists))) + " | " +
-                                                    str('{:,}'.format(format_field(rowc.Assists))))
-        em.add_field(name="Steals", value=str('{:,}'.format(format_field(row.Steals))) + " | " +
-                                                   str('{:,}'.format(format_field(rowc.Steals))))
-        em.add_field(name="Blocks", value=str('{:,}'.format(format_field(row.Blocks))) + " | " +
-                                                   str('{:,}'.format(format_field(rowc.Blocks))))
-        em.add_field(name="Turnovers", value=str('{:,}'.format(format_field(row.Turnovers))) + " | " +
-                                                      str('{:,}'.format(format_field(rowc.Turnovers))))
-        em.add_field(name="Fouls Per Game", value=str('{:,}'.format(format_field(row.Fouls))) + " | " +
-                                                  str('{:,}'.format(format_field(rowc.Fouls))))
-        em.add_field(name="Points", value=(str('{:,}'.format(row.Points)) + " | " +
-                                                    str('{:,}'.format(rowc.Points))))
+        em.add_field(name="Games Started/Played", value=str(format_field(row.GamesStarted)) + " of " +
+                                                        str(format_field(row.GamesPlayed)) + " | " +
+                                                        str(format_num(rowc.GamesStarted)) + " of " +
+                                                        str(format_num(rowc.GamesPlayed)))
+        em.add_field(name="Minutes Played", value=str(format_num(row.MinutesPlayed)) + " | " +
+                                                  str(format_num(rowc.MinutesPlayed)))
+        em.add_field(name="Fg/2Pt/3Pt/Ft Shooting", value=str(format_num(row.FgMade)) + "/" +
+                                            str(format_num(row.Fg2Made)) + "/" +
+                                            str(format_num(row.Fg3Made)) +
+                                            "/" + str(format_num(row.FtMade)) + " Makes On" + '\n' +
+                                            "__" + str(format_num(row.FgAttempts)) + "/" +
+                                            str(format_num(row.Fg2Attempts)) + "/" +
+                                            str(format_num(row.Fg3Attempts)) + "/" +
+                                            str(format_num(row.FtAttempts))
+                                            + " Attempts__" + '\n' + str(format_num(rowc.FgMade)) +
+                                            "/" + str(format_num(rowc.Fg2Made)) + "/" +
+                                            str(format_num(rowc.Fg3Made)) + "/" +
+                                            str(format_num(rowc.FtMade)) +
+                                            " Makes On" + '\n' + str(format_num(rowc.FgAttempts)) +
+                                            "/" + str(format_num(rowc.Fg2Attempts)) + "/" +
+                                            str(format_num(rowc.Fg3Attempts)) + "/" +
+                                            str(format_num(rowc.FtAttempts)) + " Attempts", inline=False)
+        em.add_field(name="Rebounds", value="__" + str(format_num(row.Rebounds)) + " (Offensive: " +
+                                            str(format_num(row.OffRebound)) +
+                                            ", Defensive: " + str(format_num(row.DefRebound)) + ")__" +
+                                            '\n' + str(format_num(rowc.Rebounds)) + " (Offensive: "
+                                            + str(format_num(rowc.OffRebound)) +
+                                            ", Defensive: " + str(format_num(rowc.DefRebound)) + ")", inline = False)
+        em.add_field(name="Assists", value=str(format_num(row.Assists)) + " | " +
+                                                    str(format_num(rowc.Assists)))
+        em.add_field(name="Steals", value=str(format_num(row.Steals)) + " | " +
+                                                   str(format_num(rowc.Steals)))
+        em.add_field(name="Blocks", value=str(format_num(row.Blocks)) + " | " +
+                                          str(format_num(rowc.Blocks)))
+        em.add_field(name="Turnovers", value=str(format_num(row.Turnovers)) + " | " +
+                                             str(format_num(rowc.Turnovers)))
+        em.add_field(name="Fouls", value=str(format_num(row.Fouls)) + " | " +
+                                         str(format_num(rowc.Fouls)))
+        em.add_field(name="Points", value=(str(format_num(row.Points)) + " | " +
+                                                    str(format_num(rowc.Points))))
+        em.set_footer(text="Data From Basketball Reference")
         await ctx.send(embed = em)
 
 # t!playofftotals ------------------------------------------------------------------------------------------------------
@@ -584,9 +615,15 @@ async def playofftotals(ctx, *, args):
 
     def format_field(field):
         if field is None or field == "":
-            return "0"
+            return 0
         else:
             return field
+
+    def format_num(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return '{:,}'.format(field)
 
     cnxn = pyodbc.connect(sql_connection)
 
@@ -618,60 +655,681 @@ async def playofftotals(ctx, *, args):
 
     if cursor.rowcount == 0:
         em = discord.Embed(color=discord.Color.red())
-        em.add_field(name=player.capitalize() + "Totals",
-                     value="There are no players with the name: `" + player.capitalize() + "`",
+        em.add_field(name=player.title() + "Playoff Totals",
+                     value="There are no players with the name: `" + player.title() + "`",
                      inline=False)
         em.set_footer(text="Or they've never been to the playoffs")
         await ctx.send(embed=em)
     else:
-        em = discord.Embed(title=player.capitalize() + "Totals (" + row.Team + ") " + str(row.Age) + " y/o "
+        em = discord.Embed(title=player.title() + "Playoff Totals (" + row.Team + ") " + str(row.Age) + " y/o "
                                  + row.Position, color=discord.Color.red())
         if row.Image is None:
             pass
         else:
             em.set_thumbnail(url=row.Image)
         em.add_field(name="Year | Career", value=str(row.Season) + " | Career")
-        em.add_field(name="Games Started/Played", value=str(row.GamesStarted) + " of " + str(row.GamesPlayed) + " | " +
-                                                        str('{:,}'.format(rowc.GamesStarted)) + " of " +
-                                                        str('{:,}'.format(rowc.GamesPlayed)))
-        em.add_field(name="Minutes Played", value=str('{:,}'.format(row.MinutesPlayed)) + " | " +
-                                                  str('{:,}'.format(rowc.MinutesPlayed)))
-        em.add_field(name="Fg/2Pt/3Pt/Ft Shooting", value=str('{:,}'.format(format_field(row.FgMade))) + "/" +
-                                            str('{:,}'.format(format_field(row.Fg2Made))) + "/" +
-                                            str('{:,}'.format(format_field(row.Fg3Made))) +
-                                            "/" + str('{:,}'.format(format_field(row.FtMade))) + " Makes On" + '\n' +
-                                            "__" + str('{:,}'.format(format_field(row.FgAttempts))) + "/" +
-                                            str('{:,}'.format(format_field(row.Fg2Attempts))) + "/" +
-                                            str('{:,}'.format(format_field(row.Fg3Attempts))) + "/" +
-                                            str('{:,}'.format(format_field(row.FtAttempts)))
-                                            + " Attempts__" + '\n' + str('{:,}'.format(format_field(rowc.FgMade))) +
-                                            "/" + str('{:,}'.format(format_field(rowc.Fg2Made))) + "/" +
-                                            str('{:,}'.format(format_field(rowc.Fg3Made))) + "/" +
-                                            str('{:,}'.format(format_field(rowc.FtMade))) +
-                                            " Makes On" + '\n' + str('{:,}'.format(format_field(rowc.FgAttempts))) +
-                                            "/" + str('{:,}'.format(format_field(rowc.Fg2Attempts))) + "/" +
-                                            str('{:,}'.format(format_field(rowc.Fg3Attempts))) + "/" +
-                                            str('{:,}'.format(format_field(rowc.FtAttempts))) + " Attempts",
-                                            inline=False)
-        em.add_field(name="Rebounds", value="__" + str('{:,}'.format(row.Rebounds)) + " (Offensive: " +
-                                            str('{:,}'.format(format_field(row.OffRebound))) +
-                                            ", Defensive: " + str('{:,}'.format(format_field(row.DefRebound))) + ")__" +
-                                            '\n' + str('{:,}'.format(format_field(rowc.Rebounds))) + " (Offensive: "
-                                            + str('{:,}'.format(format_field(rowc.OffRebound))) +
-                                            ", Defensive: " + str('{:,}'.format(format_field(rowc.DefRebound)))
-                                            + ")", inline = False)
-        em.add_field(name="Assists", value=str('{:,}'.format(format_field(row.Assists))) + " | " +
-                                                    str('{:,}'.format(format_field(rowc.Assists))))
-        em.add_field(name="Steals", value=str('{:,}'.format(format_field(row.Steals))) + " | " +
-                                                   str('{:,}'.format(format_field(rowc.Steals))))
-        em.add_field(name="Blocks", value=str('{:,}'.format(format_field(row.Blocks))) + " | " +
-                                                   str('{:,}'.format(format_field(rowc.Blocks))))
-        em.add_field(name="Turnovers", value=str('{:,}'.format(format_field(row.Turnovers))) + " | " +
-                                                      str('{:,}'.format(format_field(rowc.Turnovers))))
-        em.add_field(name="Fouls Per Game", value=str('{:,}'.format(format_field(row.Fouls))) + " | " +
-                                                  str('{:,}'.format(format_field(rowc.Fouls))))
-        em.add_field(name="Points", value=(str('{:,}'.format(row.Points)) + " | " +
-                                                    str('{:,}'.format(rowc.Points))))
+        em.add_field(name="Games Started/Played", value=str(format_field(row.GamesStarted)) + " of " +
+                                                        str(format_field(row.GamesPlayed)) + " | " +
+                                                        str(format_num(rowc.GamesStarted)) + " of " +
+                                                        str(format_num(rowc.GamesPlayed)))
+        em.add_field(name="Minutes Played", value=str(format_num(row.MinutesPlayed)) + " | " +
+                                                  str(format_num(rowc.MinutesPlayed)))
+        em.add_field(name="Fg/2Pt/3Pt/Ft Shooting", value=str(format_num(row.FgMade)) + "/" +
+                                            str(format_num(row.Fg2Made)) + "/" +
+                                            str(format_num(row.Fg3Made)) +
+                                            "/" + str(format_num(row.FtMade)) + " Makes On" + '\n' +
+                                            "__" + str(format_num(row.FgAttempts)) + "/" +
+                                            str(format_num(row.Fg2Attempts)) + "/" +
+                                            str(format_num(row.Fg3Attempts)) + "/" +
+                                            str(format_num(row.FtAttempts))
+                                            + " Attempts__" + '\n' + str(format_num(rowc.FgMade)) +
+                                            "/" + str(format_num(rowc.Fg2Made)) + "/" +
+                                            str(format_num(rowc.Fg3Made)) + "/" +
+                                            str(format_num(rowc.FtMade)) +
+                                            " Makes On" + '\n' + str(format_num(rowc.FgAttempts)) +
+                                            "/" + str(format_num(rowc.Fg2Attempts)) + "/" +
+                                            str(format_num(rowc.Fg3Attempts)) + "/" +
+                                            str(format_num(rowc.FtAttempts)) + " Attempts", inline=False)
+        em.add_field(name="Rebounds", value="__" + str(format_num(row.Rebounds)) + " (Offensive: " +
+                                            str(format_num(row.OffRebound)) +
+                                            ", Defensive: " + str(format_num(row.DefRebound)) + ")__" +
+                                            '\n' + str(format_num(rowc.Rebounds)) + " (Offensive: "
+                                            + str(format_num(rowc.OffRebound)) +
+                                            ", Defensive: " + str(format_num(rowc.DefRebound)) + ")", inline = False)
+        em.add_field(name="Assists", value=str(format_num(row.Assists)) + " | " +
+                                                    str(format_num(rowc.Assists)))
+        em.add_field(name="Steals", value=str(format_num(row.Steals)) + " | " +
+                                                   str(format_num(rowc.Steals)))
+        em.add_field(name="Blocks", value=str(format_num(row.Blocks)) + " | " +
+                                          str(format_num(rowc.Blocks)))
+        em.add_field(name="Turnovers", value=str(format_num(row.Turnovers)) + " | " +
+                                             str(format_num(rowc.Turnovers)))
+        em.add_field(name="Fouls", value=str(format_num(row.Fouls)) + " | " +
+                                         str(format_num(rowc.Fouls)))
+        em.add_field(name="Points", value=(str(format_num(row.Points)) + " | " +
+                                                    str(format_num(rowc.Points))))
+        em.set_footer(text="Data From Basketball Reference")
+        await ctx.send(embed = em)
+
+# t!adv ----------------------------------------------------------------------------------------------------------------
+@client.command()
+@commands.cooldown(1,3,commands.BucketType.user)
+async def adv(ctx, *, args):
+    ss = args.split(' ')
+    player = ""
+    season = datetime.today().year - 1
+    for i in range(0, len(ss)):
+        if i == len(ss) - 1 and ss[i].isnumeric():
+            season = ss[i]
+        else:
+            player += ss[i] + " "
+
+    def format_field(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return field
+
+    def format_percent(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return '{:.1f}'.format(field * 100)
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    sql = f"select p.Image, Playoffs, Season, Age, Team, Position, PlayerEfficiency, TrueShooting, Fg3Rate, FtRate," \
+          f" OffRebRate, DefRebRate, ReboundRate, AssistRate, StealRate, BlockRate, TurnoverRate, UsageRate," \
+          f" WinShares, PlusMinus, OffPlusMinus, DefPlusMinus from AdvancedStats s join Players p on " \
+          f"s.PlayerId = p.PlayerId where p.Name = '{player}' and season = 'Career' and Playoffs = 0"
+    cursor.execute(sql)
+    rowc = cursor.fetchone()
+
+    sql = f"select p.Image, Playoffs, Season, Age, Team, Position, PlayerEfficiency, TrueShooting, Fg3Rate, FtRate," \
+          f" OffRebRate, DefRebRate, ReboundRate, AssistRate, StealRate, BlockRate, TurnoverRate, UsageRate," \
+          f" WinShares, PlusMinus, OffPlusMinus, DefPlusMinus from AdvancedStats s join Players p on " \
+          f"s.PlayerId = p.PlayerId where p.Name = '{player}' and season like '{season}%' and Playoffs = 0"
+
+    cursor.execute(sql)
+    row = cursor.fetchone()
+    if cursor.rowcount == 0:
+        sql = f"select p.Image, Playoffs, Season, Age, Team, Position, PlayerEfficiency, TrueShooting, Fg3Rate, " \
+              f"FtRate, OffRebRate, DefRebRate, ReboundRate, AssistRate, StealRate, BlockRate, TurnoverRate, " \
+              f"UsageRate, WinShares, PlusMinus, OffPlusMinus, DefPlusMinus from AdvancedStats" \
+              f" s join Players p on s.PlayerId = p.PlayerId where p.Name = '{player}' and " \
+              f"(season like '19%' or season like '20%') and Playoffs = 0 order by Season desc"
+        cursor.execute(sql)
+        row = cursor.fetchone()
+
+    if cursor.rowcount == 0:
+        em = discord.Embed(color=discord.Color.red())
+        em.add_field(name=player.title() + "Advanced Stats",
+                     value="There are no players with the name: `" + player.title() + "`",
+                     inline=False)
+        await ctx.send(embed=em)
+    else:
+        em = discord.Embed(title=player.title() + "Advanced Stats (" + row.Team + ") " + str(row.Age) + " y/o "
+                                 + row.Position, color=discord.Color.red())
+        if row.Image is None:
+            pass
+        else:
+            em.set_thumbnail(url=row.Image)
+        em.add_field(name="Year | Career", value=str(row.Season) + " | Career")
+        em.add_field(name="Player Efficiency", value=str(format_field(row.PlayerEfficiency)) + " | " +
+                                                        str(format_field(rowc.PlayerEfficiency)))
+        em.add_field(name="Win Shares", value=(str(format_field(row.WinShares)) + " | " +
+                                                    str(format_field(rowc.WinShares))))
+        em.add_field(name="True Shooting %", value=str(format_percent(row.TrueShooting)) + " | " +
+                                                  str(format_percent(rowc.TrueShooting)))
+        em.add_field(name="3Pt Attempt Rate", value= str(format_percent(row.Fg3Rate)) +
+                                                  " | "  + str(format_percent(rowc.Fg3Rate)))
+        em.add_field(name="Ft Attempt Rate", value= str(format_percent(row.FtRate)) +
+                                                 " | " + str(format_percent(rowc.FtRate)))
+        em.add_field(name="Rebound Rate", value="__" + str(format_field(row.ReboundRate)) + " (Offensive: " +
+                                            str(format_field(row.OffRebRate)) +
+                                            ", Defensive: " + str(format_field(row.DefRebRate)) + ")__" +
+                                            '\n' + str(format_field(rowc.ReboundRate)) + " (Offensive: "
+                                            + str(format_field(rowc.OffRebRate)) +
+                                            ", Defensive: " + str(format_field(rowc.DefRebRate))
+                                            + ")", inline=False)
+        em.add_field(name="Assist Rate", value=str(format_field(row.AssistRate)) + " | " +
+                                                    str(format_field(rowc.AssistRate)))
+        em.add_field(name="Steal Rate", value=str(format_field(row.StealRate)) + " | " +
+                                                   str(format_field(rowc.StealRate)))
+        em.add_field(name="Block Rate", value=str(format_field(row.BlockRate)) + " | " +
+                                                   str(format_field(rowc.BlockRate)))
+        em.add_field(name="Turnover Rate", value=str(format_field(row.TurnoverRate)) + " | " +
+                                                      str(format_field(rowc.TurnoverRate)))
+        em.add_field(name="Usage Rate", value=str(format_field(row.UsageRate)) + " | " +
+                                                  str(format_field(rowc.UsageRate)))
+        em.add_field(name="Plus Minus", value="__" + str(format_field(row.PlusMinus)) + "(Offensive: " +
+                                              str(format_field(row.OffPlusMinus))  + ", Defensive: " +
+                                              str(format_field(row.DefPlusMinus)) + "__" + '\n' +
+                                                     str(format_field(rowc.PlusMinus)) + "(Offensive: " +
+                                              str(format_field(rowc.OffPlusMinus))  + ", Defensive: " +
+                                              str(format_field(rowc.DefPlusMinus)))
+        em.set_footer(text="Data From Basketball Reference")
+        await ctx.send(embed = em)
+
+
+
+# t!playoffadv ---------------------------------------------------------------------------------------------------------
+@client.command()
+@commands.cooldown(1,3,commands.BucketType.user)
+async def playoffadv(ctx, *, args):
+    ss = args.split(' ')
+    player = ""
+    season = datetime.today().year - 1
+    for i in range(0, len(ss)):
+        if i == len(ss) - 1 and ss[i].isnumeric():
+            season = ss[i]
+        else:
+            player += ss[i] + " "
+
+    def format_field(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return field
+
+    def format_percent(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return '{:.1f}'.format(field * 100)
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    sql = f"select p.Image, Playoffs, Season, Age, Team, Position, PlayerEfficiency, TrueShooting, Fg3Rate, FtRate," \
+          f" OffRebRate, DefRebRate, ReboundRate, AssistRate, StealRate, BlockRate, TurnoverRate, UsageRate," \
+          f" WinShares, PlusMinus, OffPlusMinus, DefPlusMinus from AdvancedStats s join Players p on " \
+          f"s.PlayerId = p.PlayerId where p.Name = '{player}' and season = 'Career' and Playoffs = 1"
+    cursor.execute(sql)
+    rowc = cursor.fetchone()
+
+    sql = f"select p.Image, Playoffs, Season, Age, Team, Position, PlayerEfficiency, TrueShooting, Fg3Rate, FtRate," \
+          f" OffRebRate, DefRebRate, ReboundRate, AssistRate, StealRate, BlockRate, TurnoverRate, UsageRate," \
+          f" WinShares, PlusMinus, OffPlusMinus, DefPlusMinus from AdvancedStats s join Players p on " \
+          f"s.PlayerId = p.PlayerId where p.Name = '{player}' and season like '{season}%' and Playoffs = 1"
+
+    cursor.execute(sql)
+    row = cursor.fetchone()
+    if cursor.rowcount == 0:
+        sql = f"select p.Image, Playoffs, Season, Age, Team, Position, PlayerEfficiency, TrueShooting, Fg3Rate, " \
+              f"FtRate, OffRebRate, DefRebRate, ReboundRate, AssistRate, StealRate, BlockRate, TurnoverRate, " \
+              f"UsageRate, WinShares, PlusMinus, OffPlusMinus, DefPlusMinus from AdvancedStats" \
+              f" s join Players p on s.PlayerId = p.PlayerId where p.Name = '{player}' and " \
+              f"(season like '19%' or season like '20%') and Playoffs = 1 order by Season desc"
+        cursor.execute(sql)
+        row = cursor.fetchone()
+
+    if cursor.rowcount == 0:
+        em = discord.Embed(color=discord.Color.red())
+        em.add_field(name=player.title() + "Playoff Advanced Stats",
+                     value="There are no players with the name: `" + player.title() + "`",
+                     inline=False)
+        em.set_footer(text="Or they've never been to the playoffs")
+        await ctx.send(embed=em)
+    else:
+        em = discord.Embed(title=player.title() + "Playoff Advanced Stats (" + row.Team + ") " + str(row.Age) + " y/o "
+                                 + row.Position, color=discord.Color.red())
+        if row.Image is None:
+            pass
+        else:
+            em.set_thumbnail(url=row.Image)
+        em.add_field(name="Year | Career", value=str(row.Season) + " | Career")
+        em.add_field(name="Player Efficiency", value=str(format_field(row.PlayerEfficiency)) + " | " +
+                                                        str(format_field(rowc.PlayerEfficiency)))
+        em.add_field(name="Win Shares", value=(str(format_field(row.WinShares)) + " | " +
+                                                    str(format_field(rowc.WinShares))))
+        em.add_field(name="True Shooting %", value=str(format_percent(row.TrueShooting)) + " | " +
+                                                  str(format_percent(rowc.TrueShooting)))
+        em.add_field(name="3Pt Attempt Rate", value= str(format_percent(row.Fg3Rate)) +
+                                                  " | "  + str(format_percent(rowc.Fg3Rate)))
+        em.add_field(name="Ft Attempt Rate", value= str(format_percent(row.FtRate)) +
+                                                 " | " + str(format_percent(rowc.FtRate)))
+        em.add_field(name="Rebound Rate", value="__" + str(format_field(row.ReboundRate)) + " (Offensive: " +
+                                            str(format_field(row.OffRebRate)) +
+                                            ", Defensive: " + str(format_field(row.DefRebRate)) + ")__" +
+                                            '\n' + str(format_field(rowc.ReboundRate)) + " (Offensive: "
+                                            + str(format_field(rowc.OffRebRate)) +
+                                            ", Defensive: " + str(format_field(rowc.DefRebRate))
+                                            + ")", inline=False)
+        em.add_field(name="Assist Rate", value=str(format_field(row.AssistRate)) + " | " +
+                                                    str(format_field(rowc.AssistRate)))
+        em.add_field(name="Steal Rate", value=str(format_field(row.StealRate)) + " | " +
+                                                   str(format_field(rowc.StealRate)))
+        em.add_field(name="Block Rate", value=str(format_field(row.BlockRate)) + " | " +
+                                                   str(format_field(rowc.BlockRate)))
+        em.add_field(name="Turnover Rate", value=str(format_field(row.TurnoverRate)) + " | " +
+                                                      str(format_field(rowc.TurnoverRate)))
+        em.add_field(name="Usage Rate", value=str(format_field(row.UsageRate)) + " | " +
+                                                  str(format_field(rowc.UsageRate)))
+        em.add_field(name="Plus Minus", value="__" + str(format_field(row.PlusMinus)) + "(Offensive: " +
+                                              str(format_field(row.OffPlusMinus))  + ", Defensive: " +
+                                              str(format_field(row.DefPlusMinus)) + "__" + '\n' +
+                                                     str(format_field(rowc.PlusMinus)) + "(Offensive: " +
+                                              str(format_field(rowc.OffPlusMinus))  + ", Defensive: " +
+                                              str(format_field(rowc.DefPlusMinus)))
+        em.set_footer(text="Data From Basketball Reference")
+        await ctx.send(embed = em)
+
+# t!per100 -------------------------------------------------------------------------------------------------------------
+@client.command()
+@commands.cooldown(1,3,commands.BucketType.user)
+async def per100(ctx, *, args):
+    ss = args.split(' ')
+    player = ""
+    season = datetime.today().year - 1
+    for i in range(0, len(ss)):
+        if i == len(ss) - 1 and ss[i].isnumeric():
+            season = ss[i]
+        else:
+            player += ss[i] + " "
+
+    def format_field(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return field
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    sql = f"select p.Image, Playoffs, Season, Age, Team, Position, GamesPlayed, GamesStarted, FgMade, FgAttempts, " \
+          f"Fg3Made, Fg3Attempts, Fg2Made, Fg2Attempts, FtMade, FtAttempts, OffRebound, DefRebound, Rebounds," \
+          f" Assists, Steals, Blocks, Turnovers, Fouls, Points, OffRating, DefRating " \
+          f"from Per100Stats s join Players p on s.PlayerId = p.PlayerId " \
+          f"where p.Name = '{player}' and season = 'Career' and Playoffs = 0"
+    cursor.execute(sql)
+    rowc = cursor.fetchone()
+
+    sql = f"select p.Image, Playoffs, Season, Age, Team, Position, GamesPlayed, GamesStarted, FgMade, FgAttempts, " \
+          f"Fg3Made, Fg3Attempts, Fg2Made, Fg2Attempts, FtMade, FtAttempts, OffRebound, DefRebound, Rebounds," \
+          f" Assists, Steals, Blocks, Turnovers, Fouls, Points, OffRating, DefRating " \
+          f"from Per100Stats s join Players p on s.PlayerId = p.PlayerId " \
+          f"where p.Name = '{player}' and season like '{season}%' and Playoffs = 0"
+
+    cursor.execute(sql)
+    row = cursor.fetchone()
+    if cursor.rowcount == 0:
+        sql = f"select p.Image, Playoffs, Season, Age, Team, Position, GamesPlayed, GamesStarted, FgMade, FgAttempts," \
+              f" Fg3Made, Fg3Attempts, Fg2Made, Fg2Attempts, FtMade, FtAttempts, OffRebound, DefRebound, Rebounds," \
+              f" Assists, Steals, Blocks, Turnovers, Fouls, Points, OffRating, DefRating from Per100Stats" \
+              f" s join Players p on s.PlayerId = p.PlayerId where p.Name = '{player}' and " \
+              f"(season like '19%' or season like '20%') and Playoffs = 0 order by Season desc"
+        cursor.execute(sql)
+        row = cursor.fetchone()
+
+    if cursor.rowcount == 0:
+        em = discord.Embed(color=discord.Color.red())
+        em.add_field(name=player.title() + "Per 100 Poss Stats",
+                     value="There are no players with the name: `" + player.title() + "`",
+                     inline=False)
+        await ctx.send(embed=em)
+    else:
+        em = discord.Embed(title=player.title() + "Per 100 Poss Stats (" + row.Team + ") " + str(row.Age) +
+                                 " y/o " + row.Position, color=discord.Color.red())
+        if row.Image is None:
+            pass
+        else:
+            em.set_thumbnail(url=row.Image)
+        em.add_field(name="Year | Career", value=str(row.Season) + " | Career")
+        em.add_field(name="Games Started/Played", value=str(format_field(row.GamesPlayed)) + " of " +
+                                                        str(format_field(row.GamesStarted)) + " | " +
+                                                        str(format_field(rowc.GamesPlayed)) + " of " +
+                                                        str(format_field(rowc.GamesStarted)))
+        em.add_field(name="Points", value=str(format_field(row.Points)) + " | " + str(format_field(rowc.Points)))
+        em.add_field(name="Fg/2Pt/3Pt/Ft Shooting", value=str(format_field(row.FgMade)) + "/" +
+                                                          str(format_field(row.Fg2Made)) + "/" +
+                                                          str(format_field(row.Fg3Made)) +
+                                                          "/" + str(format_field(row.FtMade)) + " Makes On" + '\n' +
+                                                          "__" + str(format_field(row.FgAttempts)) + "/" +
+                                                          str(format_field(row.Fg2Attempts)) + "/" +
+                                                          str(format_field(row.Fg3Attempts)) + "/" +
+                                                          str(format_field(row.FtAttempts))
+                                                          + " Attempts__" + '\n' + str(format_field(rowc.FgMade)) +
+                                                          "/" + str(format_field(rowc.Fg2Made)) + "/" +
+                                                          str(format_field(rowc.Fg3Made)) + "/" +
+                                                          str(format_field(rowc.FtMade)) +
+                                                          " Makes On" + '\n' + str(format_field(rowc.FgAttempts)) +
+                                                          "/" + str(format_field(rowc.Fg2Attempts)) + "/" +
+                                                          str(format_field(rowc.Fg3Attempts)) + "/" +
+                                                          str(format_field(rowc.FtAttempts)) + " Attempts")
+        em.add_field(name="Offensive/Defensive Rating", value=str(format_field(row.OffRating)) + "/" +
+                                                  str(format_field(row.DefRating)) + " | " +
+                                                  str(format_field(rowc.OffRating)) + "/" +
+                                                  str(format_field(rowc.DefRating)))
+        em.add_field(name="** **", value="** **")
+        em.add_field(name="Rebounds", value="__" + str(format_field(row.Rebounds)) + " (Off: " +
+                                            str(format_field(row.OffRebound)) +
+                                            ", Def: " + str(format_field(row.DefRebound)) + ")__" +
+                                            '\n' + str(format_field(rowc.Rebounds)) + " (Off: "
+                                            + str(format_field(rowc.OffRebound)) +
+                                            ", Def: " + str(format_field(rowc.DefRebound)) + ")")
+        em.add_field(name="Assists", value=str(format_field(row.Assists)) + " | " +
+                                                    str(format_field(rowc.Assists)))
+        em.add_field(name="Steals", value=str(format_field(row.Steals)) + " | " +
+                                                   str(format_field(rowc.Steals)))
+        em.add_field(name="Blocks", value=str(format_field(row.Blocks)) + " | " +
+                                                   str(format_field(rowc.Blocks)))
+        em.add_field(name="Turnovers", value=str(format_field(row.Turnovers)) + " | " +
+                                                      str(format_field(rowc.Turnovers)))
+        em.add_field(name="Fouls", value=str(format_field(row.Fouls)) + " | " + str(format_field(rowc.Fouls)))
+        em.set_footer(text="Data From Basketball Reference")
+        await ctx.send(embed = em)
+
+# t!playoffsper100 -----------------------------------------------------------------------------------------------------
+@client.command()
+@commands.cooldown(1,3,commands.BucketType.user)
+async def playoffper100(ctx, *, args):
+    ss = args.split(' ')
+    player = ""
+    season = datetime.today().year - 1
+    for i in range(0, len(ss)):
+        if i == len(ss) - 1 and ss[i].isnumeric():
+            season = ss[i]
+        else:
+            player += ss[i] + " "
+
+    def format_field(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return field
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    sql = f"select p.Image, Playoffs, Season, Age, Team, Position, GamesPlayed, GamesStarted, FgMade, FgAttempts, " \
+          f"Fg3Made, Fg3Attempts, Fg2Made, Fg2Attempts, FtMade, FtAttempts, OffRebound, DefRebound, Rebounds," \
+          f" Assists, Steals, Blocks, Turnovers, Fouls, Points, OffRating, DefRating " \
+          f"from Per100Stats s join Players p on s.PlayerId = p.PlayerId " \
+          f"where p.Name = '{player}' and season = 'Career' and Playoffs = 1"
+    cursor.execute(sql)
+    rowc = cursor.fetchone()
+
+    sql = f"select p.Image, Playoffs, Season, Age, Team, Position, GamesPlayed, GamesStarted, FgMade, FgAttempts, " \
+          f"Fg3Made, Fg3Attempts, Fg2Made, Fg2Attempts, FtMade, FtAttempts, OffRebound, DefRebound, Rebounds," \
+          f" Assists, Steals, Blocks, Turnovers, Fouls, Points, OffRating, DefRating " \
+          f"from Per100Stats s join Players p on s.PlayerId = p.PlayerId " \
+          f"where p.Name = '{player}' and season like '{season}%' and Playoffs = 1"
+
+    cursor.execute(sql)
+    row = cursor.fetchone()
+    if cursor.rowcount == 0:
+        sql = f"select p.Image, Playoffs, Season, Age, Team, Position, GamesPlayed, GamesStarted, FgMade, FgAttempts," \
+              f" Fg3Made, Fg3Attempts, Fg2Made, Fg2Attempts, FtMade, FtAttempts, OffRebound, DefRebound, Rebounds," \
+              f" Assists, Steals, Blocks, Turnovers, Fouls, Points, OffRating, DefRating from Per100Stats" \
+              f" s join Players p on s.PlayerId = p.PlayerId where p.Name = '{player}' and " \
+              f"(season like '19%' or season like '20%') and Playoffs = 1 order by Season desc"
+        cursor.execute(sql)
+        row = cursor.fetchone()
+
+    if cursor.rowcount == 0:
+        em = discord.Embed(color=discord.Color.red())
+        em.add_field(name=player.title() + "Playoff Per 100 Poss Stats",
+                     value="There are no players with the name: `" + player.title() + "`",
+                     inline=False)
+        em.set_footer(text="Or they've never been to the playoffs")
+        await ctx.send(embed=em)
+    else:
+        em = discord.Embed(title=player.title() + "Playoff Per 100 Poss Stats (" + row.Team + ") " +
+                                 str(row.Age) + " y/o " + row.Position, color=discord.Color.red())
+        if row.Image is None:
+            pass
+        else:
+            em.set_thumbnail(url=row.Image)
+        em.add_field(name="Year | Career", value=str(row.Season) + " | Career")
+        em.add_field(name="Games Started/Played", value=str(format_field(row.GamesPlayed)) + " of " +
+                                                        str(format_field(row.GamesStarted)) + " | " +
+                                                        str(format_field(rowc.GamesPlayed)) + " of " +
+                                                        str(format_field(rowc.GamesStarted)))
+        em.add_field(name="Points", value=str(format_field(row.Points)) + " | " + str(format_field(rowc.Points)))
+        em.add_field(name="Fg/2Pt/3Pt/Ft Shooting", value=str(format_field(row.FgMade)) + "/" +
+                                                          str(format_field(row.Fg2Made)) + "/" +
+                                                          str(format_field(row.Fg3Made)) +
+                                                          "/" + str(format_field(row.FtMade)) + " Makes On" + '\n' +
+                                                          "__" + str(format_field(row.FgAttempts)) + "/" +
+                                                          str(format_field(row.Fg2Attempts)) + "/" +
+                                                          str(format_field(row.Fg3Attempts)) + "/" +
+                                                          str(format_field(row.FtAttempts))
+                                                          + " Attempts__" + '\n' + str(format_field(rowc.FgMade)) +
+                                                          "/" + str(format_field(rowc.Fg2Made)) + "/" +
+                                                          str(format_field(rowc.Fg3Made)) + "/" +
+                                                          str(format_field(rowc.FtMade)) +
+                                                          " Makes On" + '\n' + str(format_field(rowc.FgAttempts)) +
+                                                          "/" + str(format_field(rowc.Fg2Attempts)) + "/" +
+                                                          str(format_field(rowc.Fg3Attempts)) + "/" +
+                                                          str(format_field(rowc.FtAttempts)) + " Attempts")
+        em.add_field(name="Offensive/Defensive Rating", value=str(format_field(row.OffRating)) + "/" +
+                                                  str(format_field(row.DefRating)) + " | " +
+                                                  str(format_field(rowc.OffRating)) + "/" +
+                                                  str(format_field(rowc.DefRating)))
+        em.add_field(name="** **", value="** **")
+        em.add_field(name="Rebounds", value="__" + str(format_field(row.Rebounds)) + " (Off: " +
+                                            str(format_field(row.OffRebound)) +
+                                            ", Def: " + str(format_field(row.DefRebound)) + ")__" +
+                                            '\n' + str(format_field(rowc.Rebounds)) + " (Off: "
+                                            + str(format_field(rowc.OffRebound)) +
+                                            ", Def: " + str(format_field(rowc.DefRebound)) + ")")
+        em.add_field(name="Assists", value=str(format_field(row.Assists)) + " | " +
+                                                    str(format_field(rowc.Assists)))
+        em.add_field(name="Steals", value=str(format_field(row.Steals)) + " | " +
+                                                   str(format_field(rowc.Steals)))
+        em.add_field(name="Blocks", value=str(format_field(row.Blocks)) + " | " +
+                                                   str(format_field(rowc.Blocks)))
+        em.add_field(name="Turnovers", value=str(format_field(row.Turnovers)) + " | " +
+                                                      str(format_field(rowc.Turnovers)))
+        em.add_field(name="Fouls", value=str(format_field(row.Fouls)) + " | " + str(format_field(rowc.Fouls)))
+        em.set_footer(text="Data From Basketball Reference")
+        await ctx.send(embed = em)
+
+# t!per36 -------------------------------------------------------------------------------------------------------------
+@client.command()
+@commands.cooldown(1,3,commands.BucketType.user)
+async def per36(ctx, *, args):
+    ss = args.split(' ')
+    player = ""
+    season = datetime.today().year - 1
+    for i in range(0, len(ss)):
+        if i == len(ss) - 1 and ss[i].isnumeric():
+            season = ss[i]
+        else:
+            player += ss[i] + " "
+
+    def format_field(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return field
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    sql = f"select p.Image, Playoffs, Season, Age, Team, Position, GamesPlayed, GamesStarted, Fg, Fga, " \
+          f"Fg3, Fg3a, Fg2, Fg2a, Ft, Fta, OffRebound, DefRebound, Rebounds," \
+          f" Assists, Steals, Blocks, Turnovers, Fouls, Points " \
+          f"from Per36Stats s join Players p on s.PlayerId = p.PlayerId " \
+          f"where p.Name = '{player}' and season = 'Career' and Playoffs = 0"
+    cursor.execute(sql)
+    rowc = cursor.fetchone()
+
+    sql = f"select p.Image, Playoffs, Season, Age, Team, Position, GamesPlayed, GamesStarted, Fg, Fga, " \
+          f"Fg3, Fg3a, Fg2, Fg2a, Ft, Fta, OffRebound, DefRebound, Rebounds," \
+          f" Assists, Steals, Blocks, Turnovers, Fouls, Points " \
+          f"from Per36Stats s join Players p on s.PlayerId = p.PlayerId " \
+          f"where p.Name = '{player}' and season like '{season}%' and Playoffs = 0"
+
+    cursor.execute(sql)
+    row = cursor.fetchone()
+    if cursor.rowcount == 0:
+        sql = f"select p.Image, Playoffs, Season, Age, Team, Position, GamesPlayed, GamesStarted, Fg, Fga," \
+              f" Fg3, Fg3a, Fg2, Fg2a, Ft, Fta, OffRebound, DefRebound, Rebounds," \
+              f" Assists, Steals, Blocks, Turnovers, Fouls, Points from Per36Stats" \
+              f" s join Players p on s.PlayerId = p.PlayerId where p.Name = '{player}' and " \
+              f"(season like '19%' or season like '20%') and Playoffs = 0 order by Season desc"
+        cursor.execute(sql)
+        row = cursor.fetchone()
+
+    if cursor.rowcount == 0:
+        em = discord.Embed(color=discord.Color.red())
+        em.add_field(name=player.title() + "Per 36 Min Stats",
+                     value="There are no players with the name: `" + player.title() + "`",
+                     inline=False)
+        await ctx.send(embed=em)
+    else:
+        em = discord.Embed(title=player.title() + "Per 36 Min Stats (" + row.Team + ") " + str(row.Age) +
+                                 " y/o " + row.Position, color=discord.Color.red())
+        if row.Image is None:
+            pass
+        else:
+            em.set_thumbnail(url=row.Image)
+        em.add_field(name="Year | Career", value=str(row.Season) + " | Career")
+        em.add_field(name="Games Started/Played", value=str(format_field(row.GamesPlayed)) + " of " +
+                                                        str(format_field(row.GamesStarted)) + " | " +
+                                                        str(format_field(rowc.GamesPlayed)) + " of " +
+                                                        str(format_field(rowc.GamesStarted)))
+        em.add_field(name="** **", value="** **")
+        em.add_field(name="Fg/2Pt/3Pt/Ft Shooting", value=str(format_field(row.Fg)) + "/" +
+                                                          str(format_field(row.Fg2)) + "/" +
+                                                          str(format_field(row.Fg3)) +
+                                                          "/" + str(format_field(row.Ft)) + " Makes On" + '\n' +
+                                                          "__" + str(format_field(row.Fga)) + "/" +
+                                                          str(format_field(row.Fg2a)) + "/" +
+                                                          str(format_field(row.Fg3a)) + "/" +
+                                                          str(format_field(row.Fta))
+                                                          + " Attempts__" + '\n' + str(format_field(rowc.Fg)) +
+                                                          "/" + str(format_field(rowc.Fg2)) + "/" +
+                                                          str(format_field(rowc.Fg3)) + "/" +
+                                                          str(format_field(rowc.Ft)) +
+                                                          " Makes On" + '\n' + str(format_field(rowc.Fga)) +
+                                                          "/" + str(format_field(rowc.Fg2a)) + "/" +
+                                                          str(format_field(rowc.Fg3a)) + "/" +
+                                                          str(format_field(rowc.Fta)) + " Attempts")
+        em.add_field(name="Rebounds", value="__" + str(format_field(row.Rebounds)) + " (Off: " +
+                                            str(format_field(row.OffRebound)) +
+                                            ", Def: " + str(format_field(row.DefRebound)) + ")__" +
+                                            '\n' + str(format_field(rowc.Rebounds)) + " (Off: "
+                                            + str(format_field(rowc.OffRebound)) +
+                                            ", Def: " + str(format_field(rowc.DefRebound)) + ")")
+        em.add_field(name="** **", value="** **")
+        em.add_field(name="Assists", value=str(format_field(row.Assists)) + " | " +
+                                                    str(format_field(rowc.Assists)))
+        em.add_field(name="Steals", value=str(format_field(row.Steals)) + " | " +
+                                                   str(format_field(rowc.Steals)))
+        em.add_field(name="Blocks", value=str(format_field(row.Blocks)) + " | " +
+                                                   str(format_field(rowc.Blocks)))
+        em.add_field(name="Turnovers", value=str(format_field(row.Turnovers)) + " | " +
+                                                      str(format_field(rowc.Turnovers)))
+        em.add_field(name="Fouls", value=str(format_field(row.Fouls)) + " | " + str(format_field(rowc.Fouls)))
+        em.add_field(name="Points", value=str(format_field(row.Points)) + " | " + str(format_field(rowc.Points)))
+        em.set_footer(text="Data From Basketball Reference")
+        await ctx.send(embed = em)
+
+# t!playoffper36 -------------------------------------------------------------------------------------------------------
+@client.command()
+@commands.cooldown(1,3,commands.BucketType.user)
+async def playoffper36(ctx, *, args):
+    ss = args.split(' ')
+    player = ""
+    season = datetime.today().year - 1
+    for i in range(0, len(ss)):
+        if i == len(ss) - 1 and ss[i].isnumeric():
+            season = ss[i]
+        else:
+            player += ss[i] + " "
+
+    def format_field(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return field
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    sql = f"select p.Image, Playoffs, Season, Age, Team, Position, GamesPlayed, GamesStarted, Fg, Fga, " \
+          f"Fg3, Fg3a, Fg2, Fg2a, Ft, Fta, OffRebound, DefRebound, Rebounds," \
+          f" Assists, Steals, Blocks, Turnovers, Fouls, Points " \
+          f"from Per36Stats s join Players p on s.PlayerId = p.PlayerId " \
+          f"where p.Name = '{player}' and season = 'Career' and Playoffs = 1"
+    cursor.execute(sql)
+    rowc = cursor.fetchone()
+
+    sql = f"select p.Image, Playoffs, Season, Age, Team, Position, GamesPlayed, GamesStarted, Fg, Fga, " \
+          f"Fg3, Fg3a, Fg2, Fg2a, Ft, Fta, OffRebound, DefRebound, Rebounds," \
+          f" Assists, Steals, Blocks, Turnovers, Fouls, Points " \
+          f"from Per36Stats s join Players p on s.PlayerId = p.PlayerId " \
+          f"where p.Name = '{player}' and season like '{season}%' and Playoffs = 1"
+
+    cursor.execute(sql)
+    row = cursor.fetchone()
+    if cursor.rowcount == 0:
+        sql = f"select p.Image, Playoffs, Season, Age, Team, Position, GamesPlayed, GamesStarted, Fg, Fga," \
+              f" Fg3, Fg3a, Fg2, Fg2a, Ft, Fta, OffRebound, DefRebound, Rebounds," \
+              f" Assists, Steals, Blocks, Turnovers, Fouls, Points from Per36Stats" \
+              f" s join Players p on s.PlayerId = p.PlayerId where p.Name = '{player}' and " \
+              f"(season like '19%' or season like '20%') and Playoffs = 1 order by Season desc"
+        cursor.execute(sql)
+        row = cursor.fetchone()
+
+    if cursor.rowcount == 0:
+        em = discord.Embed(color=discord.Color.red())
+        em.add_field(name=player.title() + "Playoff Per 36 Min Stats",
+                     value="There are no players with the name: `" + player.title() + "`",
+                     inline=False)
+        em.set_footer(text="Or they've never been to the playoffs")
+        await ctx.send(embed=em)
+    else:
+        em = discord.Embed(title=player.title() + "Playoff Per 36 Min Stats (" + row.Team + ") " + str(row.Age) +
+                                 " y/o " + row.Position, color=discord.Color.red())
+        if row.Image is None:
+            pass
+        else:
+            em.set_thumbnail(url=row.Image)
+        em.add_field(name="Year | Career", value=str(row.Season) + " | Career")
+        em.add_field(name="Games Started/Played", value=str(format_field(row.GamesPlayed)) + " of " +
+                                                        str(format_field(row.GamesStarted)) + " | " +
+                                                        str(format_field(rowc.GamesPlayed)) + " of " +
+                                                        str(format_field(rowc.GamesStarted)))
+        em.add_field(name="** **", value="** **")
+        em.add_field(name="Fg/2Pt/3Pt/Ft Shooting", value=str(format_field(row.Fg)) + "/" +
+                                                          str(format_field(row.Fg2)) + "/" +
+                                                          str(format_field(row.Fg3)) +
+                                                          "/" + str(format_field(row.Ft)) + " Makes On" + '\n' +
+                                                          "__" + str(format_field(row.Fga)) + "/" +
+                                                          str(format_field(row.Fg2a)) + "/" +
+                                                          str(format_field(row.Fg3a)) + "/" +
+                                                          str(format_field(row.Fta))
+                                                          + " Attempts__" + '\n' + str(format_field(rowc.Fg)) +
+                                                          "/" + str(format_field(rowc.Fg2)) + "/" +
+                                                          str(format_field(rowc.Fg3)) + "/" +
+                                                          str(format_field(rowc.Ft)) +
+                                                          " Makes On" + '\n' + str(format_field(rowc.Fga)) +
+                                                          "/" + str(format_field(rowc.Fg2a)) + "/" +
+                                                          str(format_field(rowc.Fg3a)) + "/" +
+                                                          str(format_field(rowc.Fta)) + " Attempts")
+        em.add_field(name="Rebounds", value="__" + str(format_field(row.Rebounds)) + " (Off: " +
+                                            str(format_field(row.OffRebound)) +
+                                            ", Def: " + str(format_field(row.DefRebound)) + ")__" +
+                                            '\n' + str(format_field(rowc.Rebounds)) + " (Off: "
+                                            + str(format_field(rowc.OffRebound)) +
+                                            ", Def: " + str(format_field(rowc.DefRebound)) + ")")
+        em.add_field(name="** **", value="** **")
+        em.add_field(name="Assists", value=str(format_field(row.Assists)) + " | " +
+                                                    str(format_field(rowc.Assists)))
+        em.add_field(name="Steals", value=str(format_field(row.Steals)) + " | " +
+                                                   str(format_field(rowc.Steals)))
+        em.add_field(name="Blocks", value=str(format_field(row.Blocks)) + " | " +
+                                                   str(format_field(rowc.Blocks)))
+        em.add_field(name="Turnovers", value=str(format_field(row.Turnovers)) + " | " +
+                                                      str(format_field(rowc.Turnovers)))
+        em.add_field(name="Fouls", value=str(format_field(row.Fouls)) + " | " + str(format_field(rowc.Fouls)))
+        em.add_field(name="Points", value=str(format_field(row.Points)) + " | " + str(format_field(rowc.Points)))
+        em.set_footer(text="Data From Basketball Reference")
         await ctx.send(embed = em)
 
 # ----------------------------------------------------------------------------------------------------------------------

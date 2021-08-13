@@ -2,6 +2,7 @@
 import pyodbc
 import requests
 from bs4 import BeautifulSoup
+from bs4 import Comment
 sql_connection = 'DRIVER={SQL Server Native Client 11.0};SERVER=localhost;DATABASE=BotTester;UID=sa;PWD=wa11paper'
 
 def getfromtable(table, playoffs, player_id):
@@ -325,3 +326,342 @@ def team_logo():
     cursor.commit()
 
 team_logo()
+
+# TOTAL STATS
+def getfromtotal(table, playoffs, player_id):
+    def getotal(row, tag):
+        data = row.find(attrs={"data-stat": tag})
+        if data is not None:
+            return data.get_text()
+        else:
+            return None
+
+    if table is None:
+        return
+    rows = table.find_all("tr")
+    for row in rows:
+        if (row.th != None and row.th['data-stat'] == 'season' and row.th['scope'] == 'row' and row.th.get_text()!= ""):
+            # print(row)
+
+            season = row.th.get_text()
+            age = getotal(row, "age")
+            team_id = getotal(row, "team_id")
+            pos = getotal(row, "pos")
+            games_played = getotal(row, "g")
+            games_started = getotal(row, "gs")
+            min_played = getotal(row, "mp")
+            fg = getotal(row, "fg")
+            fga = getotal(row, "fga")
+            fg3 = getotal(row, "fg3")
+            fg3a = getotal(row, "fg3a")
+            fg2 = getotal(row, "fg2")
+            fg2a = getotal(row, "fg2a")
+            ft = getotal(row, "ft")
+            fta = getotal(row, "fta")
+            off_reb = getotal(row, "orb")
+            def_reb = getotal(row, "drb")
+            rebounds = getotal(row, "trb")
+            assists = getotal(row, "ast")
+            steals = getotal(row, "stl")
+            blocks = getotal(row, "blk")
+            turnovers = getotal(row, "tov")
+            fouls = getotal(row, "pf")
+            points = getotal(row, "pts")
+
+            # print(season, age, team_id, pos, games_played, games_started, min_played, fg, fga, fg3,
+            #       fg3a, fg2, fg2a, ft, fta, off_reb, def_reb, rebounds, assists, steals,
+            #       blocks, turnovers, fouls, points)
+            cursor.execute("insert into TotalStats (PlayerId, Playoffs, Season, Age, Team, Position, GamesPlayed, "
+                            "GamesStarted, MinutesPlayed, FgMade, FgAttempts, Fg3Made, Fg3Attempts, Fg2Made, "
+                           "Fg2Attempts, FtMade, FtAttempts, OffRebound, DefRebound, Rebounds, Assists, Steals, "
+                           "Blocks, Turnovers, Fouls, Points) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,"
+                           " ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", player_id, playoffs, season, age, team_id, pos,
+                           games_played, games_started, min_played, fg, fga, fg3, fg3a, fg2, fg2a, ft, fta, off_reb,
+                           def_reb, rebounds, assists, steals, blocks, turnovers, fouls, points)
+
+    cursor.commit()
+
+def scrape_total(player_id, link):
+
+    url = 'https://www.basketball-reference.com' + link
+    print(url)
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    table = soup.find(id="totals")
+    getfromtotal(table, 0, player_id)
+
+    playoffs = soup.find(id="playoffs_totals")
+
+    if table == None:
+        return
+
+    getfromtotal(playoffs, 1, player_id)
+
+cnxn = pyodbc.connect(sql_connection)
+
+cursor = cnxn.cursor()
+
+# cursor.execute("select top 2 PlayerId, Link from Players where playerid = 'architi01'")
+cursor.execute("select PlayerId, Link from Players")
+rows = cursor.fetchall()
+for row in rows:
+    print(row.PlayerId)
+    scrape_total(row.PlayerId, row.Link)
+
+# ADVANCED STATS
+def getfromadv(table, playoffs, player_id):
+    def getadv(row, tag):
+        data = row.find(attrs={"data-stat": tag})
+        if data is not None:
+            return data.get_text()
+        else:
+            return None
+
+    if table is None:
+        return
+    rows = table.find_all("tr")
+    for row in rows:
+        if (row.th != None and row.th['data-stat'] == 'season' and row.th['scope'] == 'row' and row.th.get_text()!= ""):
+            season = row.th.get_text()
+            age = getadv(row, "age")
+            team_id = getadv(row, "team_id")
+            pos = getadv(row, "pos")
+            per = getadv(row, "per")
+            ts_pct = getadv(row, "ts_pct")
+            fg3_rate = getadv(row, "fg3a_per_fga_pct")
+            ft_rate = getadv(row, "fta_per_fga_pct")
+            orb_pct = getadv(row, "orb_pct")
+            drb_pct = getadv(row, "drb_pct")
+            trb_pct = getadv(row, "trb_pct")
+            ast_pct = getadv(row, "ast_pct")
+            stl_pct = getadv(row, "stl_pct")
+            blk_pct = getadv(row, "blk_pct")
+            tov_pct = getadv(row, "tov_pct")
+            usg_pct = getadv(row, "usg_pct")
+            win_share = getadv(row, "ws")
+            plus_minus = getadv(row, "bpm")
+            obpm = getadv(row, "obpm")
+            dbpm = getadv(row, "dbpm")
+
+            # print(season, age, team_id, pos, per, ts_pct, fg3_rate, ft_rate, orb_pct, drb_pct, trb_pct, ast_pct,
+            #       stl_pct, blk_pct, tov_pct, usg_pct, win_share, plus_minus)
+            cursor.execute("insert into AdvancedStats (PlayerId, Playoffs, Season, Age, Team, Position, "
+                           "PlayerEfficiency, TrueShooting, Fg3Rate, FtRate, OffRebRate, DefRebRate, ReboundRate, "
+                           "AssistRate, StealRate, BlockRate, TurnoverRate, UsageRate, WinShares, PlusMinus, "
+                           "OffPlusMinus, DefPlusMinus) "
+                           "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                           player_id, playoffs, season, age, team_id, pos, per, ts_pct, fg3_rate, ft_rate, orb_pct,
+                           drb_pct, trb_pct, ast_pct, stl_pct, blk_pct, tov_pct, usg_pct, win_share, plus_minus,
+                           obpm, dbpm)
+    cursor.commit()
+
+def scrape_adv(player_id, link):
+
+    url = 'https://www.basketball-reference.com' + link
+    print(url)
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    table = soup.find(id="advanced")
+    getfromadv(table, 0, player_id)
+
+    playoffs = soup.find(id="playoffs_advanced")
+
+    if table == None:
+        return
+
+    getfromadv(playoffs, 1, player_id)
+
+cnxn = pyodbc.connect(sql_connection)
+
+cursor = cnxn.cursor()
+
+# cursor.execute("select top 2 PlayerId, Link from Players where playerid = 'architi01'")
+cursor.execute("select PlayerId, Link from Players")
+rows = cursor.fetchall()
+for row in rows:
+    print(row.PlayerId)
+    scrape_adv(row.PlayerId, row.Link)
+
+# PER 100 POS
+def getfromper100(table, playoffs, player_id):
+    def getper100(row, tag):
+        data = row.find(attrs={"data-stat": tag})
+        if data is not None:
+            return data.get_text()
+        else:
+            return None
+
+    if table is None:
+        return
+    rows = table.find_all("tr")
+    for row in rows:
+        if (row.th != None and row.th['data-stat'] == 'season' and row.th['scope'] == 'row' and row.th.get_text()!= ""):
+            season = row.th.get_text()
+            age = getper100(row, "age")
+            team_id = getper100(row, "team_id")
+            pos = getper100(row, "pos")
+            games_played = getper100(row, "g")
+            games_started = getper100(row, "gs")
+            fg = getper100(row, "fg_per_poss")
+            fga = getper100(row, "fga_per_poss")
+            fg3 = getper100(row, "fg3_per_poss")
+            fg3a = getper100(row, "fg3a_per_poss")
+            fg2 = getper100(row, "fg2_per_poss")
+            fg2a = getper100(row, "fg2a_per_poss")
+            ft = getper100(row, "ft_per_poss")
+            fta = getper100(row, "fta_per_poss")
+            off_reb = getper100(row, "orb_per_poss")
+            def_reb = getper100(row, "drb_per_poss")
+            rebounds = getper100(row, "trb_per_poss")
+            assists = getper100(row, "ast_per_poss")
+            steals = getper100(row, "stl_per_poss")
+            blocks = getper100(row, "blk_per_poss")
+            turnovers = getper100(row, "tov_per_poss")
+            fouls = getper100(row, "pf_per_poss")
+            points = getper100(row, "pts_per_poss")
+            off_rating = getper100(row, "off_rtg")
+            def_rating = getper100(row, "def_rtg")
+
+            # print(season, age, team_id, pos, games_played, games_started, fg, fga, fg3, fg3a, fg2, fg2a, ft, fta,
+            #       off_reb, def_reb, rebounds, assists, steals, blocks, turnovers, fouls, points, off_rating,
+            #       def_rating)
+
+            cursor.execute("insert into Per100Stats (PlayerId, Playoffs, Season, Age, Team, Position, GamesPlayed, "
+                           "GamesStarted, FgMade, FgAttempts, Fg3Made, Fg3Attempts, Fg2Made, Fg2Attempts, FtMade, "
+                           "FtAttempts, OffRebound, DefRebound, Rebounds, Assists, Steals, Blocks, Turnovers, Fouls, "
+                           "Points, OffRating, DefRating) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,"
+                           " ?, ?, ?, ?, ?, ?, ?, ?, ?)", player_id, playoffs, season, age, team_id, pos, games_played,
+                           games_started, fg, fga, fg3, fg3a, fg2, fg2a, ft, fta, off_reb, def_reb, rebounds, assists,
+                           steals, blocks, turnovers, fouls, points, off_rating, def_rating)
+        cursor.commit()
+
+def scrape_adv(player_id, link):
+
+    url = 'https://www.basketball-reference.com' + link
+    print(url)
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    table = soup.find(id="per_poss")
+    if table is None:
+        comments = soup.find_all(string=lambda text: isinstance(text, Comment))
+        for comment in comments:
+            comment_soup = BeautifulSoup(comment, 'html.parser')
+            table = comment_soup.find(id="per_poss")
+            if table is not None:
+                break
+
+    getfromper100(table, 0, player_id)
+
+    playoffs = soup.find(id="playoffs_per_poss")
+    if playoffs is None:
+        comments = soup.find_all(string=lambda text: isinstance(text, Comment))
+        for comment in comments:
+            comment_soup = BeautifulSoup(comment, 'html.parser')
+            playoffs = comment_soup.find(id="playoffs_per_poss")
+            if playoffs is not None:
+                break
+
+    if playoffs == None:
+        return
+
+    getfromper100(playoffs, 1, player_id)
+
+cnxn = pyodbc.connect(sql_connection)
+
+cursor = cnxn.cursor()
+
+# cursor.execute("select top 2 PlayerId, Link from Players where playerid = 'architi01'")
+cursor.execute("select PlayerId, Link from Players")
+rows = cursor.fetchall()
+for row in rows:
+    print(row.PlayerId)
+    scrape_adv(row.PlayerId, row.Link)
+
+# PER 36 MIN
+def getfromper36(table, playoffs, player_id):
+    def getper36(row, tag):
+        data = row.find(attrs={"data-stat": tag})
+        if data is not None:
+            return data.get_text()
+        else:
+            return None
+
+    if table is None:
+        return
+    rows = table.find_all("tr")
+    for row in rows:
+        if (row.th != None and row.th['data-stat'] == 'season' and row.th['scope'] == 'row' and row.th.get_text()!= ""):
+            season = row.th.get_text()
+            age = getper36(row, "age")
+            team_id = getper36(row, "team_id")
+            pos = getper36(row, "pos")
+            games_played = getper36(row, "g")
+            games_started = getper36(row, "gs")
+            fg = getper36(row, "fg_per_mp")
+            fga = getper36(row, "fga_per_mp")
+            fg3 = getper36(row, "fg3_per_mp")
+            fg3a = getper36(row, "fg3a_per_mp")
+            fg2 = getper36(row, "fg2_per_mp")
+            fg2a = getper36(row, "fg2a_per_mp")
+            ft = getper36(row, "ft_per_mp")
+            fta = getper36(row, "fta_per_mp")
+            off_reb = getper36(row, "orb_per_mp")
+            def_reb = getper36(row, "drb_per_mp")
+            rebounds = getper36(row, "trb_per_mp")
+            assists = getper36(row, "ast_per_mp")
+            steals = getper36(row, "stl_per_mp")
+            blocks = getper36(row, "blk_per_mp")
+            turnovers = getper36(row, "tov_per_mp")
+            fouls = getper36(row, "pf_per_mp")
+            points = getper36(row, "pts_per_mp")
+
+            cursor.execute("insert into Per36Stats (PlayerId, Playoffs, Season, Age, Team, Position, GamesPlayed, "
+                           "GamesStarted, Fg, Fga, Fg3, Fg3a, Fg2, Fg2a, Ft, "
+                           "Fta, OffRebound, DefRebound, Rebounds, Assists, Steals, Blocks, Turnovers, Fouls, "
+                           "Points) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,"
+                           " ?, ?, ?, ?, ?, ?, ?)", player_id, playoffs, season, age, team_id, pos, games_played,
+                           games_started, fg, fga, fg3, fg3a, fg2, fg2a, ft, fta, off_reb, def_reb, rebounds, assists,
+                           steals, blocks, turnovers, fouls, points)
+        cursor.commit()
+
+def scrape_adv(player_id, link):
+
+    url = 'https://www.basketball-reference.com' + link
+    print(url)
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    table = soup.find(id="per_minute")
+    if table is None:
+        comments = soup.find_all(string=lambda text: isinstance(text, Comment))
+        for comment in comments:
+            comment_soup = BeautifulSoup(comment, 'html.parser')
+            table = comment_soup.find(id="per_minute")
+            if table is not None:
+                break
+
+    getfromper36(table, 0, player_id)
+
+    playoffs = soup.find(id="playoffs_per_minute")
+    if playoffs is None:
+        comments = soup.find_all(string=lambda text: isinstance(text, Comment))
+        for comment in comments:
+            comment_soup = BeautifulSoup(comment, 'html.parser')
+            playoffs = comment_soup.find(id="playoffs_per_minute")
+            if playoffs is not None:
+                break
+
+    if playoffs == None:
+        return
+
+    getfromper36(playoffs, 1, player_id)
+
+cnxn = pyodbc.connect(sql_connection)
+
+cursor = cnxn.cursor()
+
+# cursor.execute("select top 2 PlayerId, Link from Players where playerid = 'architi01'")
+cursor.execute("select PlayerId, Link from Players")
+rows = cursor.fetchall()
+for row in rows:
+    print(row.PlayerId)
+    scrape_adv(row.PlayerId, row.Link)
