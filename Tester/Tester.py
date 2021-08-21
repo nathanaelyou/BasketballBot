@@ -1,7 +1,13 @@
 import discord
 from discord.ext import commands
 import pyodbc
-from datetime import datetime
+from datetime import *
+from discord_components import *
+
+
+from typing import List
+from discord.abc import Messageable
+
 
 sql_connection = 'DRIVER={SQL Server Native Client 11.0};SERVER=localhost;DATABASE=BotTester;UID=sa;PWD=wa11paper'
 
@@ -11,6 +17,7 @@ client = commands.Bot(command_prefix = "t!")
 async def on_ready():
     await client.change_presence(activity=discord.Game('t!help'))
     print("We have logged in as {0.user}".format(client))
+    DiscordComponents(client)
 
 # t!search -------------------------------------------------------------------------------------------------------------
 @client.command()
@@ -1331,6 +1338,110 @@ async def playoffper36(ctx, *, args):
         em.add_field(name="Points", value=str(format_field(row.Points)) + " | " + str(format_field(rowc.Points)))
         em.set_footer(text="Data From Basketball Reference")
         await ctx.send(embed = em)
+
+# t!playoffodds --------------------------------------------------------------------------------------------------------
+# @client.command()
+# @commands.cooldown(1,3,commands.BucketType.user)
+# async def odds(ctx):
+#
+#     def format_field(field):
+#         if field is None or field == "":
+#             return "0.0%"
+#         else:
+#             return field
+#
+#     cnxn = pyodbc.connect(sql_connection)
+#
+#     cursor = cnxn.cursor()
+#     sql = "select Team, PlayoffPercent, WinFinal, ProjWIn, ProjLoss, Conference, Seed " \
+#           "from PlayoffOdds where Conference = 0 order by Seed asc"
+#     cursor.execute(sql)
+#     rowe = cursor.fetchall()
+#
+#     sql = "select Team, PlayoffPercent, WinFinal, ProjWIn, ProjLoss, Conference, Seed " \
+#           "from PlayoffOdds where Conference = 1 order by Seed asc"
+#     cursor.execute(sql)
+#     roww = cursor.fetchall()
+#
+#     west = ""
+#     east = ""
+#
+#     for rows in roww:
+#         west += "**" + rows.Team + "** | " + str(rows.ProjWIn) + "**/**" + str(rows.ProjLoss) + " **|** " + \
+#                 str(format_field(rows.PlayoffPercent)) + " **|** " + str(format_field(rows.WinFinal)) + '\n'
+#
+#     for rows in rowe:
+#         east += "**" + rows.Team + "** | " + str(rows.ProjWIn) + "**/**" + str(rows.ProjLoss) + " **|** " + \
+#                 str(format_field(rows.PlayoffPercent)) + " **|** " + str(format_field(rows.WinFinal)) + '\n'
+#
+#
+#     em = discord.Embed(title="West Odds", color=discord.Color.red())
+#     em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds", value= west, inline=False)
+#     em.set_footer(text="Data From Basketball Reference")
+#     await ctx.send(embed = em)
+#
+#     em = discord.Embed(title="West Odds", color=discord.Color.red())
+#     em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds", value= east, inline=False)
+#     em.set_footer(text="Data From Basketball Reference")
+#     await ctx.send(embed = em)
+
+@client.command()
+async def hi(ctx):
+
+    def format_field(field):
+        if field is None or field == "":
+            return "0.0%"
+        else:
+            return field
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    sql = "select Team, PlayoffPercent, WinFinal, ProjWIn, ProjLoss, Conference, Seed " \
+          "from PlayoffOdds where Conference = 0 order by Seed asc"
+    cursor.execute(sql)
+    rowe = cursor.fetchall()
+
+    sql = "select Team, PlayoffPercent, WinFinal, ProjWIn, ProjLoss, Conference, Seed " \
+          "from PlayoffOdds where Conference = 1 order by Seed asc"
+    cursor.execute(sql)
+    roww = cursor.fetchall()
+
+    west = ""
+    east = ""
+
+    for rows in roww:
+        west += "**" + rows.Team + "** | " + str(rows.ProjWIn) + "**/**" + str(rows.ProjLoss) + " **|** " + \
+                str(format_field(rows.PlayoffPercent)) + " **|** " + str(format_field(rows.WinFinal)) + '\n'
+
+    for rows in rowe:
+        east += "**" + rows.Team + "** | " + str(rows.ProjWIn) + "**/**" + str(rows.ProjLoss) + " **|** " + \
+                str(format_field(rows.PlayoffPercent)) + " **|** " + str(format_field(rows.WinFinal)) + '\n'
+
+    em = discord.Embed(title="West Odds", color=discord.Color.red())
+    em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds", value=west, inline=False)
+    em.set_footer(text="Data From Basketball Reference")
+
+    await ctx.send(embed=em,
+        components=[[
+            Button(style=ButtonStyle.blue, label="West", custom_id="West"),
+            Button(style=ButtonStyle.blue, label="East", custom_id="East")
+        ]]
+    )
+
+    while True:
+        interaction = await client.wait_for("button_click")
+        if interaction.component.label.startswith("West"):
+            em = discord.Embed(title="West Odds", color=discord.Color.red())
+            em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds", value=west, inline=False)
+            em.set_footer(text="Data From Basketball Reference")
+            await interaction.respond(embed=em, type=7)
+        else:
+            em = discord.Embed(title="East Odds", color=discord.Color.red())
+            em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds", value=east, inline=False)
+            em.set_footer(text="Data From Basketball Reference")
+            await interaction.respond(embed=em, type=7)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 @client.command()
