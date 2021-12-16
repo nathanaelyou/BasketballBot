@@ -4,11 +4,6 @@ import pyodbc
 from datetime import *
 from discord_components import *
 
-
-from typing import List
-from discord.abc import Messageable
-
-
 sql_connection = 'DRIVER={SQL Server Native Client 11.0};SERVER=localhost;DATABASE=BotTester;UID=sa;PWD=wa11paper'
 
 client = commands.Bot(command_prefix = "t!")
@@ -27,22 +22,31 @@ async def search(ctx, *, player = ""):
     cnxn = pyodbc.connect(sql_connection)
 
     cursor = cnxn.cursor()
-    sql = "select Name from Players where FinalYear = 2021 and " \
-          "(Name like '" + player + "%' or Name like '% " + player + "' or Name like '% " + player +\
-          " %') order by Name"
-    cursor.execute(sql)
+    cursor.execute(f"select top 10 Name from Players where FinalYear = 2021 and name like '%{player}%' "
+                   f"order by name")
     rows = cursor.fetchall()
 
     info = ""
 
     if cursor.rowcount == 0:
-        info = "There are no active players with the name " + player
+        info = "There are no active players with `" + player + "` in their name"
     else:
         for row in rows:
-             info += '\n' + row.Name
+            info += '\n' + row.Name
+
+    cursor = cnxn.cursor()
+    cursor.execute(f"select players = count(*) from players where FinalYear = 2021 and name like '%{player}%'")
+    rowp = cursor.fetchone()
+
+    if cursor.rowcount == 0:
+        pass
+    else:
+        players = rowp.players
+
 
     em = discord.Embed(color=discord.Color.red())
-    em.add_field(name="All active NBA players with the name `" + player.capitalize() + "`:", value = info, inline=False)
+    em.add_field(name="All active NBA players with `" + player.title() + "` in their name:", value = info, inline=False)
+    em.set_footer(text=f"{players} total players")
     await ctx.send(embed = em)
 
 # t!salary -------------------------------------------------------------------------------------------------------------
@@ -93,14 +97,14 @@ async def salary(ctx, *, player = ""):
         em.set_footer(text="Data From Basketball Reference")
         await ctx.send(embed = em)
 
-# t!playerinfo ---------------------------------------------------------------------------------------------------------
+# t!player ---------------------------------------------------------------------------------------------------------
 @client.command()
 @commands.cooldown(1,3,commands.BucketType.user)
-async def playerinfo(ctx, *, player = ""):
+async def player(ctx, *, player = ""):
 
     def format_class(draft):
         if draft is None:
-            return first_year
+            return row.FirstYear
         else:
             return draft
 
@@ -126,9 +130,10 @@ async def playerinfo(ctx, *, player = ""):
 
     cursor = cnxn.cursor()
     cursor.execute("select FirstYear, FinalYear, Image, Country, College, Height, Weight, JerseyNumber, Birthday, "
-                   "Age = DATEDIFF(year, birthday, getdate()), DraftTeam, DraftPick, DraftYear from Players "
+                   "DraftTeam, DraftPick, DraftYear from Players "
                    "where Name = ? order by FinalYear desc", player)
     rows = cursor.fetchall()
+
 
 
     if cursor.rowcount == 0:
@@ -139,36 +144,24 @@ async def playerinfo(ctx, *, player = ""):
         await ctx.send(embed=em)
     else:
         for row in rows:
-            first_year = row.FirstYear
-            final_year = row.FinalYear
-            country = row.Country
-            college = row.College
-            height = row.Height
-            weight = row.Weight
-            jersey_number = row.JerseyNumber
-            birthday = row.Birthday
-            age = row.Age
-            draft_team = row.DraftTeam
-            draft_pick = row.DraftPick
-            draft_year = row.DraftYear
-            image = row.Image
             em = discord.Embed(title=player.capitalize() + " Info", color=discord.Color.red())
-            if image is None:
+            if row.Image is None or "":
                 pass
             else:
-                em.set_thumbnail(url=image)
-            em.add_field(name="Birthday", value=format_field(birthday))
-            em.add_field(name="Age", value=format_field(age))
-            em.add_field(name="Seasons Played", value= str(format_field(final_year - first_year)) + " seasons; "
-                                                       + format_field(active(final_year)))
-            em.add_field(name="Draft", value="**Draft Class:** " + str(format_class(draft_year)) + '\n'
-                                            + "**Pick:** " + str(format_draft(draft_pick)) + '\n'
-                                            + "**Team:** " + str(format_draft(draft_team)))
-            em.add_field(name="College", value=format_field(college))
-            em.add_field(name="Birth Place", value=format_field(country))
-            em.add_field(name="Height", value=format_field(height))
-            em.add_field(name="Weight", value=str(format_field(weight)) + " lb")
-            em.add_field(name="Jersey Number", value=format_field(jersey_number))
+                em.set_thumbnail(url=row.Image)
+
+            em.add_field(name="Birthday", value=format_field(row.Birthday))
+            em.add_field(name="Seasons Played", value= str(format_field(row.FinalYear - row.FirstYear)) + " seasons; "
+                                                       + format_field(active(row.FinalYear)))
+            em.add_field(name="College", value=format_field(row.College))
+            em.add_field(name="Draft", value="**Draft Class:** " + str(format_class(row.DraftYear)) + '\n'
+                                            + "**Pick:** " + str(format_draft(row.DraftPick)) + '\n'
+                                            + "**Team:** " + str(format_draft(row.DraftTeam)))
+            em.add_field(name="Birth Place", value=format_field(row.Country))
+            em.add_field(name="** **", value="** **")
+            em.add_field(name="Height", value=format_field(row.Height))
+            em.add_field(name="Weight", value=str(format_field(row.Weight)) + " lb")
+            em.add_field(name="Jersey Number", value=format_field(row.JerseyNumber))
             em.set_footer(text="Data From Basketball Reference")
             await ctx.send(embed = em)
 
@@ -405,30 +398,10 @@ async def playoffstats(ctx, *, args):
         em.set_footer(text="Data From Basketball Reference")
         await ctx.send(embed = em)
 
-# t!teams --------------------------------------------------------------------------------------------------------------
-@client.command()
-@commands.cooldown(1,3,commands.BucketType.user)
-async def teams(ctx):
-    cnxn = pyodbc.connect(sql_connection)
-
-    cursor = cnxn.cursor()
-    sql = "select TeamName, Division, Conference, AltTeamId from Teams order by AltTeamId"
-    cursor.execute(sql)
-    rows = cursor.fetchall()
-
-    teams = ""
-
-    for row in rows:
-        teams += "**" + row.AltTeamId + "** | " + row.TeamName + '\n'
-
-    em = discord.Embed(title= "All Nba Teams",color=discord.Color.red())
-    em.add_field(name="Team Id | Team", value=teams)
-    await ctx.send(embed=em)
-
 # t!teamsalary ---------------------------------------------------------------------------------------------------------
 @client.command()
 @commands.cooldown(1,3,commands.BucketType.user)
-async def teamsalary(ctx, team):
+async def teamsalary(ctx):
 
     def format_salary(salary):
         if salary is None:
@@ -453,13 +426,13 @@ async def teamsalary(ctx, team):
     cursor = cnxn.cursor()
     cursor.execute("select p.Name, TeamId, ts.PlayerId, ts.Salary1, ts.Salary2, ts.Salary3, ts.Salary4, "
                    "ts.Salary5, ts.Salary6 from TeamSalary ts join Players p on ts.PlayerId = p.PlayerId where "
-                   "TeamId = ? order by ts.Salary1 desc", team)
+                   "TeamId = ? order by ts.Salary1 desc", "atl")
     rows = cursor.fetchall()
 
     cnxn = pyodbc.connect(sql_connection)
 
     cursor = cnxn.cursor()
-    cursor.execute("select TeamName from Teams where AltTeamId = ?", team)
+    cursor.execute("select TeamName from Teams where AltTeamId = ?", "atl")
     rowc = cursor.fetchone()
 
     salaries = ""
@@ -470,32 +443,160 @@ async def teamsalary(ctx, team):
     team_5 = 0
     team_6 = 0
 
-    if cursor.rowcount == 0:
-        em = discord.Embed(color=discord.Color.red())
-        em.add_field(name="You may have put in the wrong team id", value=f"`{team}` is not a valid team id")
-        await ctx.send(embed=em)
-    else:
-        for row in rows:
-            salaries += "**" + row.Name + "**: " + str(format_salary(row.Salary1)) + str(format_salary2(row.Salary2)) \
+
+    for row in rows:
+        salaries += "**" + row.Name + "**: " + str(format_salary(row.Salary1)) + str(format_salary2(row.Salary2)) \
                         + str(format_salary2(row.Salary3)) + str(format_salary2(row.Salary4)) + \
                         str(format_salary2(row.Salary5)) + str(format_salary2(row.Salary6)) + '\n'
 
-            team_1 += format_total(row.Salary1)
-            team_2 += format_total(row.Salary2)
-            team_3 += format_total(row.Salary3)
-            team_4 += format_total(row.Salary4)
-            team_5 += format_total(row.Salary5)
-            team_6 += format_total(row.Salary6)
+        team_1 += format_total(row.Salary1)
+        team_2 += format_total(row.Salary2)
+        team_3 += format_total(row.Salary3)
+        team_4 += format_total(row.Salary4)
+        team_5 += format_total(row.Salary5)
+        team_6 += format_total(row.Salary6)
 
-        team_tot = "6 Year Total: **$" + str("{:,}".format(team_1 + team_2 + team_3 + team_4 + team_5 + team_6)) + "**"
+    team_tot = "6 Year Total: **$" + str("{:,}".format(team_1 + team_2 + team_3 + team_4 + team_5 + team_6)) + "**"
 
-        em = discord.Embed(title=f"{rowc.TeamName} Payroll",color=discord.Color.red())
-        em.add_field(name="Name: 2021 | 2022 | 2023 | 2024 | 2025 | 2026", value= salaries, inline = False)
-        em.add_field(name="Total: $" + str("{:,}".format(team_1)) + " | $" + str("{:,}".format(team_2)) + " | $" +
-                          str("{:,}".format(team_3)) + " | $" + str("{:,}".format(team_4)) +
-                          " | $" + str("{:,}".format(team_5)) + " | $" + str("{:,}".format(team_6)), value= team_tot)
-        em.set_footer(text="Data From Basketball Reference")
-        await ctx.send(embed=em)
+    em = discord.Embed(title=f"{rowc.TeamName} Payroll",color=discord.Color.red())
+    em.add_field(name="Name: 2021 | 2022 | 2023 | 2024 | 2025 | 2026", value= salaries, inline = False)
+    em.add_field(name="Total: $" + str("{:,}".format(team_1)) + " | $" + str("{:,}".format(team_2)) + " | $" +
+                      str("{:,}".format(team_3)) + " | $" + str("{:,}".format(team_4)) +
+                      " | $" + str("{:,}".format(team_5)) + " | $" + str("{:,}".format(team_6)), value= team_tot)
+    em.set_footer(text="Data From Basketball Reference")
+
+    atl = "Atl_Sal_" + str(ctx.author.id)
+    bos = "Bos_Sal_" + str(ctx.author.id)
+    brk = "Brk_Sal_" + str(ctx.author.id)
+    cho = "Cho_Sal_" + str(ctx.author.id)
+    chi = "Chi_Sal_" + str(ctx.author.id)
+    cle = "Cle_Sal_" + str(ctx.author.id)
+    dal = "Dal_Sal_" + str(ctx.author.id)
+    den = "Den_Sal_" + str(ctx.author.id)
+    det = "Det_Sal_" + str(ctx.author.id)
+    gsw = "Gsw_Sal_" + str(ctx.author.id)
+    hou = "Hou_Sal_" + str(ctx.author.id)
+    ind = "Ind_Sal_" + str(ctx.author.id)
+    lac = "Lac_Sal_" + str(ctx.author.id)
+    lal = "Lal_Sal_" + str(ctx.author.id)
+    mem = "Mem_Sal_" + str(ctx.author.id)
+    mia = "Mia_Sal_" + str(ctx.author.id)
+    mil = "Mil_Sal_" + str(ctx.author.id)
+    min = "Min_Sal_" + str(ctx.author.id)
+    nop = "Nop_Sal_" + str(ctx.author.id)
+    nyk = "Nyk_Sal_" + str(ctx.author.id)
+    okc = "Okc_Sal_" + str(ctx.author.id)
+    orl = "Orl_Sal_" + str(ctx.author.id)
+    phi = "Phi_Sal_" + str(ctx.author.id)
+    pho = "Pho_Sal_" + str(ctx.author.id)
+    por = "Por_Sal_" + str(ctx.author.id)
+    sac = "Sac_Sal_" + str(ctx.author.id)
+    sas = "Sas_Sal_" + str(ctx.author.id)
+    tor = "Tor_Sal_" + str(ctx.author.id)
+    uta = "Uta_Sal_" + str(ctx.author.id)
+    was = "Was_Sal_" + str(ctx.author.id)
+
+    await ctx.send(
+                embed=em,
+                components = [[
+                    Select(
+                        placeholder = "Select A Team",
+                        options = [
+                            SelectOption(label="Atlanta Hawks", value= atl),
+                            SelectOption(label="Boston Celtics", value= bos),
+                            SelectOption(label="Brooklyn Nets", value= brk),
+                            SelectOption(label="Charlotte Hornets", value= cho),
+                            SelectOption(label="Chicago Bulls", value= chi),
+                            SelectOption(label="Cleveland Cavaliers", value= cle),
+                            SelectOption(label="Dallas Mavericks", value= dal),
+                            SelectOption(label="Denver Nuggets", value= den),
+                            SelectOption(label="Detroit Pistons", value= det),
+                            SelectOption(label="Golden State Warriors", value= gsw),
+                            SelectOption(label="Houston Rockets", value= hou),
+                            SelectOption(label="Indiana Pacers", value= ind),
+                            SelectOption(label="Los Angeles Clippers", value= lac),
+                            SelectOption(label="Los Angeles Lakers", value= lal),
+                            SelectOption(label="Memphis Grizzlies", value= mem)
+                        ]
+                    )
+                ],
+                [
+                    Select(
+                        placeholder="Select A Team",
+                        options=[
+                            SelectOption(label="Miami Heat", value= mia),
+                            SelectOption(label="Milwaukee Bucks", value= mil),
+                            SelectOption(label="Minnesota Timberwolves", value= min),
+                            SelectOption(label="New Orleans Pelicans", value= nop),
+                            SelectOption(label="New York Knicks", value= nyk),
+                            SelectOption(label="Oklahoma City Thunder", value= okc),
+                            SelectOption(label="Orlando Magic", value= orl),
+                            SelectOption(label="Philadelphia 76ers", value= phi),
+                            SelectOption(label="Phoenix Suns", value= pho),
+                            SelectOption(label="Portland Trail Blazers", value= por),
+                            SelectOption(label="Sacramento Kings", value= sac),
+                            SelectOption(label="San Antonio Spurs", value= sas),
+                            SelectOption(label="Toronto Raptors", value= tor),
+                            SelectOption(label="Utah Jazz", value= uta),
+                            SelectOption(label="Washington Wizards", value= was)
+                        ]
+                    )
+                ]
+                ],
+            )
+
+    while True:
+        interaction = await client.wait_for("select_option", check=lambda i: i.values[0].find("Sal") >= 0)
+        author_id = interaction.values[0].split('_')[2]
+
+        if author_id == str(interaction.author.id):
+            cnxn = pyodbc.connect(sql_connection)
+
+            cursor = cnxn.cursor()
+            cursor.execute("select p.Name, TeamId, ts.PlayerId, ts.Salary1, ts.Salary2, ts.Salary3, ts.Salary4, "
+                           "ts.Salary5, ts.Salary6 from TeamSalary ts join Players p on ts.PlayerId = p.PlayerId where "
+                           "TeamId = ? order by ts.Salary1 desc", interaction.values[0].split('_')[0])
+            rows = cursor.fetchall()
+
+            cnxn = pyodbc.connect(sql_connection)
+
+            cursor = cnxn.cursor()
+            cursor.execute("select TeamName from Teams where AltTeamId = ?", interaction.values[0].split('_')[0])
+            rowc = cursor.fetchone()
+
+            salaries = ""
+            team_1 = 0
+            team_2 = 0
+            team_3 = 0
+            team_4 = 0
+            team_5 = 0
+            team_6 = 0
+
+            for row in rows:
+                salaries += "**" + row.Name + "**: " + str(format_salary(row.Salary1)) + \
+                            str(format_salary2(row.Salary2)) \
+                            + str(format_salary2(row.Salary3)) + str(format_salary2(row.Salary4)) + \
+                            str(format_salary2(row.Salary5)) + str(format_salary2(row.Salary6)) + '\n'
+
+                team_1 += format_total(row.Salary1)
+                team_2 += format_total(row.Salary2)
+                team_3 += format_total(row.Salary3)
+                team_4 += format_total(row.Salary4)
+                team_5 += format_total(row.Salary5)
+                team_6 += format_total(row.Salary6)
+
+            team_tot = "6 Year Total: **$" + str("{:,}".format(team_1 + team_2 + team_3 + team_4 + team_5 + team_6)) \
+                       + "**"
+
+            em = discord.Embed(title=f"{rowc.TeamName} Payroll", color=discord.Color.red())
+            em.add_field(name="Name: 2021 | 2022 | 2023 | 2024 | 2025 | 2026", value=salaries, inline=False)
+            em.add_field(name="Total: $" + str("{:,}".format(team_1)) + " | $" + str("{:,}".format(team_2)) + " | $" +
+                              str("{:,}".format(team_3)) + " | $" + str("{:,}".format(team_4)) +
+                              " | $" + str("{:,}".format(team_5)) + " | $" + str("{:,}".format(team_6)), value=team_tot)
+            em.set_footer(text="Data From Basketball Reference")
+            await interaction.respond(embed=em, type=7)
+        else:
+            await interaction.respond(content="This isn't yor button!", type=4)
 
 # t!totals -------------------------------------------------------------------------------------------------------------
 @client.command()
@@ -1339,54 +1440,9 @@ async def playoffper36(ctx, *, args):
         em.set_footer(text="Data From Basketball Reference")
         await ctx.send(embed = em)
 
-# t!playoffodds --------------------------------------------------------------------------------------------------------
-# @client.command()
-# @commands.cooldown(1,3,commands.BucketType.user)
-# async def odds(ctx):
-#
-#     def format_field(field):
-#         if field is None or field == "":
-#             return "0.0%"
-#         else:
-#             return field
-#
-#     cnxn = pyodbc.connect(sql_connection)
-#
-#     cursor = cnxn.cursor()
-#     sql = "select Team, PlayoffPercent, WinFinal, ProjWIn, ProjLoss, Conference, Seed " \
-#           "from PlayoffOdds where Conference = 0 order by Seed asc"
-#     cursor.execute(sql)
-#     rowe = cursor.fetchall()
-#
-#     sql = "select Team, PlayoffPercent, WinFinal, ProjWIn, ProjLoss, Conference, Seed " \
-#           "from PlayoffOdds where Conference = 1 order by Seed asc"
-#     cursor.execute(sql)
-#     roww = cursor.fetchall()
-#
-#     west = ""
-#     east = ""
-#
-#     for rows in roww:
-#         west += "**" + rows.Team + "** | " + str(rows.ProjWIn) + "**/**" + str(rows.ProjLoss) + " **|** " + \
-#                 str(format_field(rows.PlayoffPercent)) + " **|** " + str(format_field(rows.WinFinal)) + '\n'
-#
-#     for rows in rowe:
-#         east += "**" + rows.Team + "** | " + str(rows.ProjWIn) + "**/**" + str(rows.ProjLoss) + " **|** " + \
-#                 str(format_field(rows.PlayoffPercent)) + " **|** " + str(format_field(rows.WinFinal)) + '\n'
-#
-#
-#     em = discord.Embed(title="West Odds", color=discord.Color.red())
-#     em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds", value= west, inline=False)
-#     em.set_footer(text="Data From Basketball Reference")
-#     await ctx.send(embed = em)
-#
-#     em = discord.Embed(title="West Odds", color=discord.Color.red())
-#     em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds", value= east, inline=False)
-#     em.set_footer(text="Data From Basketball Reference")
-#     await ctx.send(embed = em)
-
+# t!odds ---------------------------------------------------------------------------------------------------------------
 @client.command()
-async def hi(ctx):
+async def odds(ctx):
 
     def format_field(field):
         if field is None or field == "":
@@ -1397,13 +1453,80 @@ async def hi(ctx):
     cnxn = pyodbc.connect(sql_connection)
 
     cursor = cnxn.cursor()
+
     sql = "select Team, PlayoffPercent, WinFinal, ProjWIn, ProjLoss, Conference, Seed " \
-          "from PlayoffOdds where Conference = 0 order by Seed asc"
+          "from PlayoffOdds where Conference = 0 order by ProjWin desc"
     cursor.execute(sql)
     rowe = cursor.fetchall()
 
     sql = "select Team, PlayoffPercent, WinFinal, ProjWIn, ProjLoss, Conference, Seed " \
-          "from PlayoffOdds where Conference = 1 order by Seed asc"
+          "from PlayoffOdds where Conference = 1 order by ProjWin desc"
+    cursor.execute(sql)
+    roww = cursor.fetchall()
+
+    west = ""
+    east = ""
+    
+    for rows in roww:
+        west += "**" + rows.Team + "** | " + str(rows.ProjWIn) + " **/** " + str(rows.ProjLoss) + " **|** " + \
+                str(format_field(rows.PlayoffPercent)) + " **|** " + str(format_field(rows.WinFinal)) + '\n'
+
+    for rows in rowe:
+        east += "**" + rows.Team + "** | " + str(rows.ProjWIn) + " **/** " + str(rows.ProjLoss) + " **|** " + \
+                str(format_field(rows.PlayoffPercent)) + " **|** " + str(format_field(rows.WinFinal)) + '\n'
+
+
+
+    em = discord.Embed(title="West Odds", color=discord.Color.red())
+    em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds",
+                 value=west,
+                 inline=False)
+    em.set_footer(text="Data From Basketball Reference")
+
+    west_id = "West_Odds_" + str(ctx.author.id)
+    east_id = "East_Odds_" + str(ctx.author.id)
+    await ctx.send(embed=em,
+                   components=[[
+         Button(style=ButtonStyle.blue, label="West", custom_id=west_id),
+         Button(style=ButtonStyle.blue, label="East", custom_id=east_id)
+         ]]
+                   )
+    while True:
+        interaction = await client.wait_for("button_click", check=lambda i: i.component.custom_id.find("Odds") >= 0)
+        author_id = interaction.component.id.split('_')[2]
+        if author_id == str(interaction.author.id):
+            if interaction.component.label.startswith("West"):
+                    em = discord.Embed(title="West Odds", color=discord.Color.red())
+                    em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds",
+                                 value=west,
+                                 inline=False)
+                    em.set_footer(text="Data From Basketball Reference")
+                    await interaction.respond(embed=em, type=7)
+            else:
+                em = discord.Embed(title="East Odds", color=discord.Color.red())
+                em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds",
+                             value=east,
+                             inline=False)
+                em.set_footer(text="Data From Basketball Reference")
+                await interaction.respond(embed=em, type=7)
+        else:
+            await interaction.respond(content="This isn't yor button!", type=4)
+
+# t!standings ----------------------------------------------------------------------------------------------------------
+@client.command()
+async def standings(ctx):
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+
+    sql = "select TeamName, Wins, Losses, GamesBehind, WinLoss, Conference, Seed " \
+          "from Standings where Conference = 0 order by Seed asc"
+    cursor.execute(sql)
+    rowe = cursor.fetchall()
+
+    sql = "select TeamName, Wins, Losses, GamesBehind, WinLoss, Conference, Seed " \
+          "from Standings where Conference = 1 order by Seed asc"
     cursor.execute(sql)
     roww = cursor.fetchall()
 
@@ -1411,37 +1534,555 @@ async def hi(ctx):
     east = ""
 
     for rows in roww:
-        west += "**" + rows.Team + "** | " + str(rows.ProjWIn) + "**/**" + str(rows.ProjLoss) + " **|** " + \
-                str(format_field(rows.PlayoffPercent)) + " **|** " + str(format_field(rows.WinFinal)) + '\n'
+        west += "**" + str(rows.Seed) + ". " + str(rows.TeamName) + " | **" + str(rows.Wins) + " **/** " + \
+                str(rows.Losses) + " **|** " + str(rows.WinLoss) + " **|** " + \
+                str(rows.GamesBehind) + '\n'
 
     for rows in rowe:
-        east += "**" + rows.Team + "** | " + str(rows.ProjWIn) + "**/**" + str(rows.ProjLoss) + " **|** " + \
-                str(format_field(rows.PlayoffPercent)) + " **|** " + str(format_field(rows.WinFinal)) + '\n'
+        east += "**" + str(rows.Seed) + ". " + str(rows.TeamName) + "** | " + str(rows.Wins) + " **/** " + \
+                str(rows.Losses) + " **|** " + str(rows.WinLoss) + " **|** " + \
+                str(rows.GamesBehind) + '\n'
 
-    em = discord.Embed(title="West Odds", color=discord.Color.red())
-    em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds", value=west, inline=False)
+    em = discord.Embed(title="West Standings", color=discord.Color.red())
+    em.add_field(name="Team | Wins/Losses | Win % | Games Behind",
+                 value=west,
+                 inline=False)
     em.set_footer(text="Data From Basketball Reference")
 
+    west_id = "West_Standing_" + str(ctx.author.id)
+    east_id = "East_Standing_" + str(ctx.author.id)
     await ctx.send(embed=em,
+                   components=[[
+         Button(style=ButtonStyle.blue, label="West", custom_id=west_id),
+         Button(style=ButtonStyle.blue, label="East", custom_id=east_id)
+         ]]
+                   )
+    while True:
+        interaction = await client.wait_for("button_click", check=lambda i: i.component.custom_id.find("Standing") >= 0)
+        author_id = interaction.component.id.split('_')[2]
+        if author_id == str(interaction.author.id):
+            if interaction.component.label.startswith("West"):
+                    em = discord.Embed(title="West Standings", color=discord.Color.red())
+                    em.add_field(name="Team | Wins/Losses | Win % | Games Behind",
+                                 value=west,
+                                 inline=False)
+                    em.set_footer(text="Data From Basketball Reference")
+                    await interaction.respond(embed=em, type=7)
+            else:
+                em = discord.Embed(title="East Standings", color=discord.Color.red())
+                em.add_field(name="Team | Wins/Losses | Win % | Games Behind",
+                             value=east,
+                             inline=False)
+                em.set_footer(text="Data From Basketball Reference")
+                await interaction.respond(embed=em, type=7)
+        else:
+            await interaction.respond(content="This isn't yor button!", type=4)
+
+# t!teamstats ----------------------------------------------------------------------------------------------------------
+@client.command()
+async def teamstats(ctx):
+
+    def format_field(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return field
+
+    def format_percent(field):
+        if field is None or field == "":
+            return 0
+        else:
+            return '{:.1f}'.format(field * 100)
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+
+    cursor.execute("select TeamName, GamesPlayed, FgPercent, Fg, Fga, Fg3Percent, Fg3, Fg3a, Fg2Percent, Fg2, Fg2a, "
+                   "FtPercent, Ft, Fta, OffRebound, DefRebound, Rebounds, Steals, Blocks, Assists, Turnovers, Fouls, "
+                   "Points, OppPoints from TeamStats where TeamName = ?", "Atlanta Hawks")
+    row = cursor.fetchone()
+
+    cursor = cnxn.cursor()
+    cursor.execute("select TeamName, Wins, Losses, Seed from Standings where TeamName = ?", "Atlanta Hawks")
+    rowe = cursor.fetchone()
+
+    cursor = cnxn.cursor()
+    cursor.execute("select TeamName, TeamLogo from Teams where TeamName = ?", "Atlanta Hawks")
+    rowi = cursor.fetchone()
+
+    em = discord.Embed(title=row.TeamName + " Stats", color=discord.Color.red())
+    em.set_thumbnail(url=rowi.TeamLogo)
+    em.add_field(name="Seed", value=str(rowe.Seed))
+    em.add_field(name="Games Played", value=str(format_field(row.GamesPlayed)))
+    em.add_field(name="Wins/Losses", value=str(format_field(rowe.Wins)) + " / " + str(format_field(rowe.Losses)))
+    em.add_field(name="Fg%/2Pt%/3Pt%/Ft%", value=str(format_percent(row.FgPercent)) +
+                                                 "/" + str(format_percent(row.Fg2Percent)) + "/" +
+                                                 str(format_percent(row.Fg3Percent)) + "/" +
+                                                 str(format_percent(row.FtPercent)))
+    em.add_field(name="Fg/2Pt/3Pt/Ft Shooting", value=str(format_field(row.Fg)) + "/" +
+                                                      str(format_field(row.Fg2)) + "/" +
+                                                      str(format_field(row.Fg3)) +
+                                                      "/" + str(format_field(row.Ft)) + " Makes On" + '\n' +
+                                                      str(format_field(row.Fga)) + "/" +
+                                                      str(format_field(row.Fg2a)) + "/" +
+                                                      str(format_field(row.Fg3a)) + "/" +
+                                                      str(format_field(row.Fta))
+                                                      + " Attempts")
+    em.add_field(name="Rebounds", value=str(format_field(row.Rebounds)) + " (Offensive: " +
+                                        str(format_field(row.OffRebound)) +
+                                        ", Defensive: " + str(format_field(row.DefRebound)) + ")",
+                                        inline=False)
+    em.add_field(name="Assists", value=str(format_field(row.Assists)))
+    em.add_field(name="Steals", value=str(format_field(row.Steals)))
+    em.add_field(name="Blocks", value=str(format_field(row.Blocks)))
+    em.add_field(name="Turnovers", value=str(format_field(row.Turnovers)))
+    em.add_field(name="Fouls", value=str(format_field(row.Fouls)))
+    em.add_field(name="Points/Opp Points", value=str(format_field(row.Points)) + " / " +
+                                                 str(format_field(row.OppPoints)))
+    em.set_footer(text="Data From Basketball Reference")
+
+    atl = "Atlanta Hawks_TeamStats_" + str(ctx.author.id)
+    bos = "Boston Celitcs_TeamStats_" + str(ctx.author.id)
+    brk = "Brooklyn Nets_TeamStats_" + str(ctx.author.id)
+    cho = "Charlotte Hornets_TeamStats_" + str(ctx.author.id)
+    chi = "Chicago Bulls_TeamStats_" + str(ctx.author.id)
+    cle = "Clevland Cavaliers_TeamStats_" + str(ctx.author.id)
+    dal = "Dallas Mavericks_TeamStats_" + str(ctx.author.id)
+    den = "Denver Nuggets_TeamStats_" + str(ctx.author.id)
+    det = "Detroit Pistons_TeamStats_" + str(ctx.author.id)
+    gsw = "Golden Stats Warriors_TeamStats_" + str(ctx.author.id)
+    hou = "Houston Rockets_TeamStats_" + str(ctx.author.id)
+    ind = "Indiana Pacers_TeamStats_" + str(ctx.author.id)
+    lac = "Los Angeles Clippers_TeamStats_" + str(ctx.author.id)
+    lal = "Los Angeles Lakers_TeamStats_" + str(ctx.author.id)
+    mem = "Memphis Grizzlies_TeamStats_" + str(ctx.author.id)
+    mia = "Miami Heat_TeamStats_" + str(ctx.author.id)
+    mil = "Milwaukee Bucks_TeamStats_" + str(ctx.author.id)
+    min = "Minnesota Timberwolves_TeamStats_" + str(ctx.author.id)
+    nop = "New Orleans Pelicans_TeamStats_" + str(ctx.author.id)
+    nyk = "New York Knicks_TeamStats_" + str(ctx.author.id)
+    okc = "Oklahoma City Thunder_TeamStats_" + str(ctx.author.id)
+    orl = "Orlando Magic_TeamStats_" + str(ctx.author.id)
+    phi = "Philadelphia 76ers_TeamStats_" + str(ctx.author.id)
+    pho = "Phoenix Suns_TeamStats_" + str(ctx.author.id)
+    por = "Portland Trail Blazers_TeamStats_" + str(ctx.author.id)
+    sac = "Sacramento Kings_TeamStats_" + str(ctx.author.id)
+    sas = "San Antonio Spurs_TeamStats_" + str(ctx.author.id)
+    tor = "Toronto Raptors_TeamStats_" + str(ctx.author.id)
+    uta = "Utah Jass_TeamStats_" + str(ctx.author.id)
+    was = "Washington Wizards_TeamStats_" + str(ctx.author.id)
+
+    await ctx.send(
+        embed=em,
         components=[[
-            Button(style=ButtonStyle.blue, label="West", custom_id="West"),
-            Button(style=ButtonStyle.blue, label="East", custom_id="East")
-        ]]
+            Select(
+                placeholder="Select A Team",
+                options=[
+                    SelectOption(label="Atlanta Hawks", value=atl),
+                    SelectOption(label="Boston Celtics", value=bos),
+                    SelectOption(label="Brooklyn Nets", value=brk),
+                    SelectOption(label="Charlotte Hornets", value=cho),
+                    SelectOption(label="Chicago Bulls", value=chi),
+                    SelectOption(label="Cleveland Cavaliers", value=cle),
+                    SelectOption(label="Dallas Mavericks", value=dal),
+                    SelectOption(label="Denver Nuggets", value=den),
+                    SelectOption(label="Detroit Pistons", value=det),
+                    SelectOption(label="Golden State Warriors", value=gsw),
+                    SelectOption(label="Houston Rockets", value=hou),
+                    SelectOption(label="Indiana Pacers", value=ind),
+                    SelectOption(label="Los Angeles Clippers", value=lac),
+                    SelectOption(label="Los Angeles Lakers", value=lal),
+                    SelectOption(label="Memphis Grizzlies", value=mem)
+                ]
+            )
+        ],
+            [
+                Select(
+                    placeholder="Select A Team",
+                    options=[
+                        SelectOption(label="Miami Heat", value=mia),
+                        SelectOption(label="Milwaukee Bucks", value=mil),
+                        SelectOption(label="Minnesota Timberwolves", value=min),
+                        SelectOption(label="New Orleans Pelicans", value=nop),
+                        SelectOption(label="New York Knicks", value=nyk),
+                        SelectOption(label="Oklahoma City Thunder", value=okc),
+                        SelectOption(label="Orlando Magic", value=orl),
+                        SelectOption(label="Philadelphia 76ers", value=phi),
+                        SelectOption(label="Phoenix Suns", value=pho),
+                        SelectOption(label="Portland Trail Blazers", value=por),
+                        SelectOption(label="Sacramento Kings", value=sac),
+                        SelectOption(label="San Antonio Spurs", value=sas),
+                        SelectOption(label="Toronto Raptors", value=tor),
+                        SelectOption(label="Utah Jazz", value=uta),
+                        SelectOption(label="Washington Wizards", value=was)
+                    ]
+                )
+            ]
+        ],
     )
 
     while True:
-        interaction = await client.wait_for("button_click")
-        if interaction.component.label.startswith("West"):
-            em = discord.Embed(title="West Odds", color=discord.Color.red())
-            em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds", value=west, inline=False)
+        interaction = await client.wait_for("select_option", check=lambda i: i.values[0].find("TeamStats") >= 0)
+        author_id = interaction.values[0].split('_')[2]
+
+        if author_id == str(interaction.author.id):
+            cnxn = pyodbc.connect(sql_connection)
+
+            cursor = cnxn.cursor()
+
+            cursor.execute(
+                "select TeamName, GamesPlayed, FgPercent, Fg, Fga, Fg3Percent, Fg3, Fg3a, Fg2Percent, Fg2, Fg2a, "
+                "FtPercent, Ft, Fta, OffRebound, DefRebound, Rebounds, Steals, Blocks, Assists, Turnovers, Fouls, "
+                "Points, OppPoints from TeamStats where TeamName = ?", interaction.values[0].split('_')[0])
+            row = cursor.fetchone()
+
+            cursor = cnxn.cursor()
+            cursor.execute("select TeamName, Wins, Losses, Seed from Standings where TeamName = ?",
+                           interaction.values[0].split('_')[0])
+            rowe = cursor.fetchone()
+
+            cursor = cnxn.cursor()
+            cursor.execute("select TeamName, TeamLogo from Teams where TeamName = ?",
+                           interaction.values[0].split('_')[0])
+            rowi = cursor.fetchone()
+
+            em = discord.Embed(title=row.TeamName + " Stats", color=discord.Color.red())
+            em.set_thumbnail(url=rowi.TeamLogo)
+            em.add_field(name="Seed", value=str(rowe.Seed))
+            em.add_field(name="Games Played", value=str(format_field(row.GamesPlayed)))
+            em.add_field(name="Wins/Losses", value=str(format_field("{:.0f}".format(rowe.Wins))) + " / " +
+                                                   str(format_field("{:.0f}".format(rowe.Losses))))
+            em.add_field(name="Fg%/2Pt%/3Pt%/Ft%", value=str(format_percent(row.FgPercent)) +
+                                                         "/" + str(format_percent(row.Fg2Percent)) + "/" +
+                                                         str(format_percent(row.Fg3Percent)) + "/" +
+                                                         str(format_percent(row.FtPercent)))
+            em.add_field(name="Fg/2Pt/3Pt/Ft Shooting", value=str(format_field(row.Fg)) + "/" +
+                                                              str(format_field(row.Fg2)) + "/" +
+                                                              str(format_field(row.Fg3)) +
+                                                              "/" + str(format_field(row.Ft)) + " Makes On" + '\n' +
+                                                              str(format_field(row.Fga)) + "/" +
+                                                              str(format_field(row.Fg2a)) + "/" +
+                                                              str(format_field(row.Fg3a)) + "/" +
+                                                              str(format_field(row.Fta))
+                                                              + " Attempts")
+            em.add_field(name="Rebounds", value=str(format_field(row.Rebounds)) + " (Offensive: " +
+                                                str(format_field(row.OffRebound)) +
+                                                ", Defensive: " + str(format_field(row.DefRebound)) + ")",
+                                                inline=False)
+            em.add_field(name="Assists", value=str(format_field(row.Assists)))
+            em.add_field(name="Steals", value=str(format_field(row.Steals)))
+            em.add_field(name="Blocks", value=str(format_field(row.Blocks)))
+            em.add_field(name="Turnovers", value=str(format_field(row.Turnovers)))
+            em.add_field(name="Fouls", value=str(format_field(row.Fouls)))
+            em.add_field(name="Points/Opp Points", value=str(format_field(row.Points)) + " / " +
+                                                         str(format_field(row.OppPoints)))
             em.set_footer(text="Data From Basketball Reference")
             await interaction.respond(embed=em, type=7)
         else:
-            em = discord.Embed(title="East Odds", color=discord.Color.red())
-            em.add_field(name="Team | Projected Wins/Losses | Playoff Odds | Title Odds", value=east, inline=False)
+            await interaction.respond(content="This isn't yor button!", type=4)
+
+# t!roster ---------------------------------------------------------------------------------------------------------
+@client.command()
+@commands.cooldown(1,3,commands.BucketType.user)
+async def roster(ctx):
+
+    def format_exp(exp):
+        if exp.isnumeric():
+            return str(exp) + " Years"
+        else:
+            return exp
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    cursor.execute("Select TeamId, Player, JerseyNumber, Experience, Position from Roster where TeamId = ?", "atl")
+    rows = cursor.fetchall()
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    cursor.execute("select TeamName, TeamLogo from Teams where AltTeamId = ?", "atl")
+    rowc = cursor.fetchone()
+
+    roster = ""
+
+    for row in rows:
+        roster += "**" + row.JerseyNumber + " | " + row.Player + "** | " + row.Position + " | " + \
+                  format_exp(row.Experience) + '\n'
+
+    em = discord.Embed(title=f"{rowc.TeamName} Roster",color=discord.Color.red())
+    em.set_thumbnail(url=rowc.TeamLogo)
+    em.add_field(name="Jersey Number | Player | Position | Experience", value= roster)
+    em.set_footer(text="Data From Basketball Reference")
+
+    atl = "Atl_Ros_" + str(ctx.author.id)
+    bos = "Bos_Ros_" + str(ctx.author.id)
+    brk = "Brk_Ros_" + str(ctx.author.id)
+    cho = "Cho_Ros_" + str(ctx.author.id)
+    chi = "Chi_Ros_" + str(ctx.author.id)
+    cle = "Cle_Ros_" + str(ctx.author.id)
+    dal = "Dal_Ros_" + str(ctx.author.id)
+    den = "Den_Ros_" + str(ctx.author.id)
+    det = "Det_Ros_" + str(ctx.author.id)
+    gsw = "Gsw_Ros_" + str(ctx.author.id)
+    hou = "Hou_Ros_" + str(ctx.author.id)
+    ind = "Ind_Ros_" + str(ctx.author.id)
+    lac = "Lac_Ros_" + str(ctx.author.id)
+    lal = "Lal_Ros_" + str(ctx.author.id)
+    mem = "Mem_Ros_" + str(ctx.author.id)
+    mia = "Mia_Ros_" + str(ctx.author.id)
+    mil = "Mil_Ros_" + str(ctx.author.id)
+    min = "Min_Ros_" + str(ctx.author.id)
+    nop = "Nop_Ros_" + str(ctx.author.id)
+    nyk = "Nyk_Ros_" + str(ctx.author.id)
+    okc = "Okc_Ros_" + str(ctx.author.id)
+    orl = "Orl_Ros_" + str(ctx.author.id)
+    phi = "Phi_Ros_" + str(ctx.author.id)
+    pho = "Pho_Ros_" + str(ctx.author.id)
+    por = "Por_Ros_" + str(ctx.author.id)
+    sac = "Sac_Ros_" + str(ctx.author.id)
+    sas = "Sas_Ros_" + str(ctx.author.id)
+    tor = "Tor_Ros_" + str(ctx.author.id)
+    uta = "Uta_Ros_" + str(ctx.author.id)
+    was = "Was_Ros_" + str(ctx.author.id)
+
+    await ctx.send(
+                embed=em,
+                components = [[
+                    Select(
+                        placeholder = "Select A Team",
+                        options = [
+                            SelectOption(label="Atlanta Hawks", value= atl),
+                            SelectOption(label="Boston Celtics", value= bos),
+                            SelectOption(label="Brooklyn Nets", value= brk),
+                            SelectOption(label="Charlotte Hornets", value= cho),
+                            SelectOption(label="Chicago Bulls", value= chi),
+                            SelectOption(label="Cleveland Cavaliers", value= cle),
+                            SelectOption(label="Dallas Mavericks", value= dal),
+                            SelectOption(label="Denver Nuggets", value= den),
+                            SelectOption(label="Detroit Pistons", value= det),
+                            SelectOption(label="Golden State Warriors", value= gsw),
+                            SelectOption(label="Houston Rockets", value= hou),
+                            SelectOption(label="Indiana Pacers", value= ind),
+                            SelectOption(label="Los Angeles Clippers", value= lac),
+                            SelectOption(label="Los Angeles Lakers", value= lal),
+                            SelectOption(label="Memphis Grizzlies", value= mem)
+                        ]
+                    )
+                ],
+                [
+                    Select(
+                        placeholder="Select A Team",
+                        options=[
+                            SelectOption(label="Miami Heat", value= mia),
+                            SelectOption(label="Milwaukee Bucks", value= mil),
+                            SelectOption(label="Minnesota Timberwolves", value= min),
+                            SelectOption(label="New Orleans Pelicans", value= nop),
+                            SelectOption(label="New York Knicks", value= nyk),
+                            SelectOption(label="Oklahoma City Thunder", value= okc),
+                            SelectOption(label="Orlando Magic", value= orl),
+                            SelectOption(label="Philadelphia 76ers", value= phi),
+                            SelectOption(label="Phoenix Suns", value= pho),
+                            SelectOption(label="Portland Trail Blazers", value= por),
+                            SelectOption(label="Sacramento Kings", value= sac),
+                            SelectOption(label="San Antonio Spurs", value= sas),
+                            SelectOption(label="Toronto Raptors", value= tor),
+                            SelectOption(label="Utah Jazz", value= uta),
+                            SelectOption(label="Washington Wizards", value= was)
+                        ]
+                    )
+                ]
+                ],
+            )
+
+    while True:
+        interaction = await client.wait_for("select_option", check=lambda i: i.values[0].find("Ros") >= 0)
+        author_id = interaction.values[0].split('_')[2]
+
+        if author_id == str(interaction.author.id):
+            cnxn = pyodbc.connect(sql_connection)
+
+            cursor = cnxn.cursor()
+            cursor.execute("Select TeamId, Player, JerseyNumber, Experience, Position from Roster where TeamId = ?",
+                           interaction.values[0].split('_')[0])
+            rows = cursor.fetchall()
+
+            cnxn = pyodbc.connect(sql_connection)
+
+            cursor = cnxn.cursor()
+            cursor.execute("select TeamName, TeamLogo from Teams where AltTeamId = ?",
+                           interaction.values[0].split('_')[0])
+            rowc = cursor.fetchone()
+
+            roster = ""
+
+            for row in rows:
+                roster += "**" + row.JerseyNumber + " | " + row.Player + "** | " + row.Position + " | " + \
+                          format_exp(row.Experience) + '\n'
+
+            em = discord.Embed(title=f"{rowc.TeamName} Roster", color=discord.Color.red())
+            em.set_thumbnail(url=rowc.TeamLogo)
+            em.add_field(name="Jersey Number | Player | Position | Experience", value=roster)
             em.set_footer(text="Data From Basketball Reference")
             await interaction.respond(embed=em, type=7)
+        else:
+            await interaction.respond(content="This isn't yor button!", type=4)
 
+# t!injuries ---------------------------------------------------------------------------------------------------------
+@client.command()
+@commands.cooldown(1,3,commands.BucketType.user)
+async def injuries(ctx):
+
+    def format_inj(inj):
+        if inj is None:
+            return "There are no injuries for this team"
+        else:
+            return inj
+
+    def format_date(inj):
+        if inj is None:
+            return "** **"
+        else:
+            return "**Date: **" + inj
+
+    def format_desc(inj):
+        if inj is None:
+            return "** **"
+        else:
+            return inj
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    cursor.execute("Select Player, Team, Description, Date, TeamId from Injuries where TeamId = ?", "atl")
+    rows = cursor.fetchall()
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+    cursor.execute("select TeamName, TeamLogo from Teams where AltTeamId = ?", "atl")
+    rowc = cursor.fetchone()
+
+    em = discord.Embed(title=f"{rowc.TeamName} I    njuries", color=discord.Color.red())
+    em.set_thumbnail(url=rowc.TeamLogo)
+
+    for row in rows:
+        em.add_field(name=format_inj(row.Player),
+                     value=format_date(row.Date) + '\n' + format_desc(row.Description), inline=False)
+
+    em.set_footer(text="Data From Basketball Reference")
+
+    atl = "Atl_Inj_" + str(ctx.author.id)
+    bos = "Bos_Inj_" + str(ctx.author.id)
+    brk = "Brk_Inj_" + str(ctx.author.id)
+    cho = "Cho_Inj_" + str(ctx.author.id)
+    chi = "Chi_Inj_" + str(ctx.author.id)
+    cle = "Cle_Inj_" + str(ctx.author.id)
+    dal = "Dal_Inj_" + str(ctx.author.id)
+    den = "Den_Inj_" + str(ctx.author.id)
+    det = "Det_Inj_" + str(ctx.author.id)
+    gsw = "Gsw_Inj_" + str(ctx.author.id)
+    hou = "Hou_Inj_" + str(ctx.author.id)
+    ind = "Ind_Inj_" + str(ctx.author.id)
+    lac = "Lac_Inj_" + str(ctx.author.id)
+    lal = "Lal_Inj_" + str(ctx.author.id)
+    mem = "Mem_Inj_" + str(ctx.author.id)
+    mia = "Mia_Inj_" + str(ctx.author.id)
+    mil = "Mil_Inj_" + str(ctx.author.id)
+    min = "Min_Inj_" + str(ctx.author.id)
+    nop = "Nop_Inj_" + str(ctx.author.id)
+    nyk = "Nyk_Inj_" + str(ctx.author.id)
+    okc = "Okc_Inj_" + str(ctx.author.id)
+    orl = "Orl_Inj_" + str(ctx.author.id)
+    phi = "Phi_Inj_" + str(ctx.author.id)
+    pho = "Pho_Inj_" + str(ctx.author.id)
+    por = "Por_Inj_" + str(ctx.author.id)
+    sac = "Sac_Inj_" + str(ctx.author.id)
+    sas = "Sas_Inj_" + str(ctx.author.id)
+    tor = "Tor_Inj_" + str(ctx.author.id)
+    uta = "Uta_Inj_" + str(ctx.author.id)
+    was = "Was_Inj_" + str(ctx.author.id)
+
+    await ctx.send(
+                embed=em,
+                components = [[
+                    Select(
+                        placeholder = "Select A Team",
+                        options = [
+                            SelectOption(label="Atlanta Hawks", value= atl),
+                            SelectOption(label="Boston Celtics", value= bos),
+                            SelectOption(label="Brooklyn Nets", value= brk),
+                            SelectOption(label="Charlotte Hornets", value= cho),
+                            SelectOption(label="Chicago Bulls", value= chi),
+                            SelectOption(label="Cleveland Cavaliers", value= cle),
+                            SelectOption(label="Dallas Mavericks", value= dal),
+                            SelectOption(label="Denver Nuggets", value= den),
+                            SelectOption(label="Detroit Pistons", value= det),
+                            SelectOption(label="Golden State Warriors", value= gsw),
+                            SelectOption(label="Houston Rockets", value= hou),
+                            SelectOption(label="Indiana Pacers", value= ind),
+                            SelectOption(label="Los Angeles Clippers", value= lac),
+                            SelectOption(label="Los Angeles Lakers", value= lal),
+                            SelectOption(label="Memphis Grizzlies", value= mem)
+                        ]
+                    )
+                ],
+                [
+                    Select(
+                        placeholder="Select A Team",
+                        options=[
+                            SelectOption(label="Miami Heat", value= mia),
+                            SelectOption(label="Milwaukee Bucks", value= mil),
+                            SelectOption(label="Minnesota Timberwolves", value= min),
+                            SelectOption(label="New Orleans Pelicans", value= nop),
+                            SelectOption(label="New York Knicks", value= nyk),
+                            SelectOption(label="Oklahoma City Thunder", value= okc),
+                            SelectOption(label="Orlando Magic", value= orl),
+                            SelectOption(label="Philadelphia 76ers", value= phi),
+                            SelectOption(label="Phoenix Suns", value= pho),
+                            SelectOption(label="Portland Trail Blazers", value= por),
+                            SelectOption(label="Sacramento Kings", value= sac),
+                            SelectOption(label="San Antonio Spurs", value= sas),
+                            SelectOption(label="Toronto Raptors", value= tor),
+                            SelectOption(label="Utah Jazz", value= uta),
+                            SelectOption(label="Washington Wizards", value= was)
+                        ]
+                    )
+                ]
+                ],
+            )
+
+    while True:
+        interaction = await client.wait_for("select_option", check=lambda i: i.values[0].find("Inj") >= 0)
+        author_id = interaction.values[0].split('_')[2]
+
+        if author_id == str(interaction.author.id):
+            cnxn = pyodbc.connect(sql_connection)
+
+            cursor = cnxn.cursor()
+            cursor.execute("Select Player, Team, Description, Date, TeamId from Injuries where TeamId = ?",
+                           interaction.values[0].split('_')[0])
+            rows = cursor.fetchall()
+
+            cnxn = pyodbc.connect(sql_connection)
+
+            cursor = cnxn.cursor()
+            cursor.execute("select TeamName, TeamLogo from Teams where AltTeamId = ?",
+                           interaction.values[0].split('_')[0])
+            rowc = cursor.fetchone()
+
+            em = discord.Embed(title=f"{rowc.TeamName} Injuries", color=discord.Color.red())
+            em.set_thumbnail(url=rowc.TeamLogo)
+
+            for row in rows:
+                em.add_field(name=format_inj(row.Player),
+                             value=format_date(row.Date) + '\n' + format_desc(row.Description), inline=False)
+
+            em.set_footer(text="Data From Basketball Reference")
+            await interaction.respond(embed=em, type=7)
+        else:
+            await interaction.respond(content="This isn't yor button!", type=4)
 
 # ----------------------------------------------------------------------------------------------------------------------
 @client.command()

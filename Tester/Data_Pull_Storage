@@ -753,3 +753,252 @@ def west_odds():
     cursor.commit()
 
 west_odds()
+
+# STANDINGS
+def east_standings():
+
+    url = 'https://www.basketball-reference.com/leagues/NBA_2021_standings.html'
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    # print(soup)
+    table = soup.find(id="confs_standings_E")
+    # print(table)
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+
+    rows = table.find_all("tr")
+    for row in rows:
+
+        team_name = row.th.get_text()
+        wins = row.find(attrs={"data-stat": "wins"}).get_text()
+        losses = row.find(attrs={"data-stat": "losses"}).get_text()
+        games_behind = row.find(attrs={"data-stat": "gb"}).get_text()
+        win_loss = row.find(attrs={"data-stat": "win_loss_pct"}).get_text()
+
+        if team_name != "Eastern Conference":
+            print(team_name[:-6], wins, losses, games_behind, win_loss, team_name[-5:-2].replace('(', ''))
+
+            cursor.execute("insert into Standings (TeamName, Wins, Losses, GamesBehind, Winloss, Conference, Seed) "
+                           "values(?, ?, ?, ?, ?, ?, ?)",
+                            team_name[:-6], wins, losses, games_behind, win_loss, 0, team_name[-5:-2].replace('(', ''))
+
+            cursor.commit()
+        else:
+            pass
+
+east_standings()
+
+def west_standings():
+
+    url = 'https://www.basketball-reference.com/leagues/NBA_2021_standings.html'
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    # print(soup)
+    table = soup.find(id="confs_standings_W")
+    # print(table)
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+
+    rows = table.find_all("tr")
+    for row in rows:
+
+        team_name = row.th.get_text()
+        wins = row.find(attrs={"data-stat": "wins"}).get_text()
+        losses = row.find(attrs={"data-stat": "losses"}).get_text()
+        games_behind = row.find(attrs={"data-stat": "gb"}).get_text()
+        win_loss = row.find(attrs={"data-stat": "win_loss_pct"}).get_text()
+
+        if team_name != "Western Conference":
+            print(team_name[:-6], wins, losses, games_behind, win_loss, team_name[-5:-2].replace('(', ''))
+
+            cursor.execute("insert into Standings (TeamName, Wins, Losses, GamesBehind, Winloss, Conference, Seed) "
+                           "values(?, ?, ?, ?, ?, ?, ?)",
+                            team_name[:-6], wins, losses, games_behind, win_loss, 1, team_name[-5:-2].replace('(', ''))
+
+            cursor.commit()
+        else:
+            pass
+
+west_standings()
+
+TEAM STATS
+def team_stats():
+    url = 'https://www.basketball-reference.com/leagues/NBA_2021.html'
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    table = soup.find(id="per_game-team")
+    # print(table)
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+
+    teams = table.find_all("tr")
+    for row in teams:
+        rank = row.th.get_text()
+        if rank == "Rk" or rank == "":
+            pass
+        else:
+            team_name = row.find(attrs={"data-stat": "team"}).get_text()
+            gp = row.find(attrs={"data-stat": "g"}).get_text()
+            fg = row.find(attrs={"data-stat": "fg"}).get_text()
+            fga = row.find(attrs={"data-stat": "fga"}).get_text()
+            fg_pct = row.find(attrs={"data-stat": "fg_pct"}).get_text()
+            fg3 = row.find(attrs={"data-stat": "fg3"}).get_text()
+            fg3a = row.find(attrs={"data-stat": "fg3a"}).get_text()
+            fg3_pct = row.find(attrs={"data-stat": "fg3_pct"}).get_text()
+            fg2 = row.find(attrs={"data-stat": "fg2"}).get_text()
+            fg2a = row.find(attrs={"data-stat": "fg2a"}).get_text()
+            fg2_pct = row.find(attrs={"data-stat": "fg2_pct"}).get_text()
+            ft = row.find(attrs={"data-stat": "ft"}).get_text()
+            fta = row.find(attrs={"data-stat": "fta"}).get_text()
+            ft_pct = row.find(attrs={"data-stat": "ft_pct"}).get_text()
+            orb = row.find(attrs={"data-stat": "orb"}).get_text()
+            drb = row.find(attrs={"data-stat": "drb"}).get_text()
+            rb = row.find(attrs={"data-stat": "trb"}).get_text()
+            ast = row.find(attrs={"data-stat": "ast"}).get_text()
+            stl = row.find(attrs={"data-stat": "stl"}).get_text()
+            blk = row.find(attrs={"data-stat": "blk"}).get_text()
+            tov = row.find(attrs={"data-stat": "tov"}).get_text()
+            foul = row.find(attrs={"data-stat": "pf"}).get_text()
+            pts = row.find(attrs={"data-stat": "pts"}).get_text()
+            print(team_name.replace('*', ''), gp, fg, fga, fg_pct, fg3, fg3a, fg3_pct, fg2, fg2a, fg2_pct, ft, fta,
+                  ft_pct, orb, drb, rb, ast, stl, blk, tov, foul, pts)
+            cursor.execute("insert into TeamStats (TeamName, GamesPlayed, FgPercent, Fg, Fga, Fg3Percent, Fg3, Fg3a,"
+                           "Fg2Percent, Fg2, Fg2a, FtPercent, Ft, Fta,  OffRebound, DefRebound, Rebounds, Steals, "
+                           "Blocks, Assists, Turnovers, Fouls, Points) "
+                           "values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                           team_name.replace('*', ''), gp, fg_pct, fg, fga, fg3_pct, fg3, fg3a, fg2_pct, fg2, fg2a,
+                           ft_pct, ft, fta, orb, drb, rb, ast, stl, blk, tov, foul, pts)
+
+            cursor.commit()
+
+team_stats()
+
+def opp_team_stats():
+    url = 'https://www.basketball-reference.com/leagues/NBA_2021.html'
+    page = requests.get(url)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    table = soup.find(id="per_game-opponent")
+    # print(table)
+
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+
+    teams = table.find_all("tr")
+    for row in teams:
+        rank = row.th.get_text()
+        if rank == "Rk" or rank == "":
+            pass
+        else:
+            team_name = row.find(attrs={"data-stat": "team"}).get_text()
+            opp_pts = row.find(attrs={"data-stat": "opp_pts"}).get_text()
+            print(team_name.replace('*', ''), opp_pts)
+
+            cursor.execute("update TeamStats set OppPoints = ? Where TeamName = ?", opp_pts, team_name.replace('*', ''))
+
+            cursor.commit()
+
+opp_team_stats()
+
+ROSTER
+def roster():
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+
+    cursor.execute("select AltTeamId from Teams")
+    teams = cursor.fetchall()
+
+    for team in teams:
+        url = 'https://www.basketball-reference.com/teams/' + team.AltTeamId + '/2022.html'
+        page = requests.get(url)
+        soup = BeautifulSoup(page.content, 'html.parser')
+        # print(soup)
+        table = soup.find(id="roster")
+        # print(table)
+
+        roster = table.find_all("tr")
+        for row in roster:
+            number = row.find(attrs={"data-stat": "number"}).get_text()
+            if number == "No.":
+                pass
+            else:
+                number = row.find(attrs={"data-stat": "number"}).get_text()
+                player = row.find(attrs={"data-stat": "player"}).get_text()
+                pos = row.find(attrs={"data-stat": "pos"}).get_text()
+                exp = row.find(attrs={"data-stat": "years_experience"}).get_text()
+                print(number, player.replace('(TW)', ''), pos, exp.replace('R', 'Rookie'))
+
+                cnxn = pyodbc.connect(sql_connection)
+
+                cursor = cnxn.cursor()
+
+                cursor.execute("Insert into Roster(TeamId, Player, JerseyNumber, Experience, Position) "
+                               "Values(?, ?, ?, ?, ?)",
+                               team.AltTeamId, player.replace('(TW)', ''), number, exp.replace('R', 'Rookie'), pos)
+            cursor.commit()
+
+roster()
+
+INJURIES
+def injuries():
+    cnxn = pyodbc.connect(sql_connection)
+
+    cursor = cnxn.cursor()
+
+    cursor.execute("select AltTeamId from Teams")
+    row = cursor.fetchall()
+
+    for row in row:
+        url = 'https://www.basketball-reference.com/teams/' + row.AltTeamId + '/2022.html'
+        page = requests.get(url)
+        soup = BeautifulSoup(page.content, 'html.parser')
+        # print(soup)
+        table = soup.find(id="injuries")
+        if table is None:
+            comments = soup.find_all(string=lambda text: isinstance(text, Comment))
+            for comment in comments:
+                comment_soup = BeautifulSoup(comment, 'html.parser')
+                table = comment_soup.find(id="injuries")
+                if table is not None:
+                    # print(table)
+                    break
+
+        if table is not None:
+            team_id = row.AltTeamId
+            roster = table.find_all("tr")
+            for row in roster:
+                player = row.find(attrs={"data-stat": "player"}).get_text()
+                if player == "Player":
+                    pass
+                else:
+                    player = row.find(attrs={"data-stat": "player"}).get_text()
+                    team = row.find(attrs={"data-stat": "team_name"}).get_text()
+                    desc = row.find(attrs={"data-stat": "note"}).get_text()
+                    date = row.find(attrs={"data-stat": "date_update"}).get_text()
+                    print(player, team, desc, date, row.AltTeamId, team_id)
+
+                    cnxn = pyodbc.connect(sql_connection)
+
+                    cursor = cnxn.cursor()
+
+                    cursor.execute("Insert into Injuries(Player, Team, Description, Date, TeamId) "
+                                   "Values(?, ?, ?, ?, ?)",
+                                   player, team, desc, date, team_id)
+                    cursor.commit()
+        else:
+            print(row.AltTeamId)
+            cnxn = pyodbc.connect(sql_connection)
+
+            cursor = cnxn.cursor()
+
+            cursor.execute("Insert into Injuries(TeamId) Values(?)", row.AltTeamId)
+            cursor.commit()
+
+injuries()
