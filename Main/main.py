@@ -919,4 +919,4 @@ async def info(ctx):
         await ctx.send(embed=em)
 
 # Super Secret Token ---------------------------------------------------------------------------------------------------
-client.run('ODU4NTM5MDU1NDA2MTIwOTYw.YNfmzQ.a2yFCt-tX06jEQbnRGSba3-lmTo')
+client.run(hidden)
